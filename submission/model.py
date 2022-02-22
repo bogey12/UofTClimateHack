@@ -359,7 +359,7 @@ class Encoder(nn.Module):
         self.input = DoubleConv(inputs, SIZE)
         n_layers = config['n_layers']
         self.encoder = nn.ModuleList([Down(SIZE, SIZE*2, separate=config['separate'][1]), Down(SIZE*2, SIZE*4, separate=config['separate'][1])] + [SameNoMerge(SIZE*4, SIZE*4) for _ in range(n_layers)])
-d        self.decoder = nn.ModuleList([SameMerge(SIZE*8, SIZE*4) for _ in range(n_layers-1)] + [SameMerge(SIZE*8, SIZE*2)] + [Up(SIZE*4, SIZE, separate=config['separate'][1]), Same(SIZE*2, SIZE, separate=config['separate'][1])])
+        self.decoder = nn.ModuleList([SameMerge(SIZE*8, SIZE*4) for _ in range(n_layers-1)] + [SameMerge(SIZE*8, SIZE*2)] + [Up(SIZE*4, SIZE, separate=config['separate'][1]), Same(SIZE*2, SIZE, separate=config['separate'][1])])
         # self.decoder = nn.ModuleList([Up(SIZE*2**i, SIZE*2**(i - 2), separate=config['separate'][1]) for i in range(n_layers, 1, -1)] + [Same(SIZE*2, SIZE, separate=config['separate'][1])])
         if sigmoid:
             self.output = nn.Sequential(
