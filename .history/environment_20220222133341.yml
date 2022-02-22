@@ -239,10 +239,11 @@ dependencies:
     - tensorboard-data-server==0.6.1
     - tensorboard-plugin-wit==1.8.1
     - tensorboardx==2.4.1
-    - torch==1.10.2
-    - torchaudio==0.10.2
+    - torch==1.10.2+cu102
+    - torchaudio==0.10.2+cu102
     - torchmetrics==0.7.1
-    - torchvision==0.11.3
+    - torchvision==0.11.3+cu102
     - tqdm==4.62.3
     - werkzeug==2.0.3
     - wrapt==1.13.3
+prefix: /home/jovyan/conda/envs/climatehack

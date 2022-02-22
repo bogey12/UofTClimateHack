@@ -242,7 +242,8 @@ dependencies:
     - torch==1.10.2
     - torchaudio==0.10.2
     - torchmetrics==0.7.1
-    - torchvision==0.11.3
+    - torchvision==0.11.3+cu102
     - tqdm==4.62.3
     - werkzeug==2.0.3
     - wrapt==1.13.3
+prefix: /home/jovyan/conda/envs/climatehack

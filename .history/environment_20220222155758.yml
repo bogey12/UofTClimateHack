@@ -246,3 +246,4 @@ dependencies:
     - tqdm==4.62.3
     - werkzeug==2.0.3
     - wrapt==1.13.3
+prefix: /home/jovyan/conda/envs/climatehack
