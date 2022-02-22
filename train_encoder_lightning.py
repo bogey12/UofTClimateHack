@@ -1,6 +1,5 @@
 
 from multiprocessing.dummy import freeze_support
-from turtle import forward
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
