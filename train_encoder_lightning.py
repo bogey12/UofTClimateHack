@@ -41,7 +41,7 @@ if __name__ == '__main__':
     )
     training_ds = dataset.sel(time=slice("2020-07-01 09:00", "2020-10-01 09:00"))
     validation_ds = dataset.sel(time=slice("2020-12-01 09:00", "2020-12-10 09:00"))
-    datapoints = np.load('ds_total.npz', allow_pickle=True)['datapoints']#.to_list()
+    datapoints = np.load('~/datastores/ds_total/ds_total.npz', allow_pickle=True)['datapoints']#.to_list()
     np.random.shuffle(datapoints)
     tot_points = len(datapoints)
     train_len = int(tot_points*0.8)
@@ -60,7 +60,7 @@ if __name__ == '__main__':
     validation_dl.multiprocessing_context = 'spawn'
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     config = {
-        "separate": (64, False),
+        "separate": (128, False),
         "n_layers": 1,
         "dropout": 0.1,
         "swap": False,
