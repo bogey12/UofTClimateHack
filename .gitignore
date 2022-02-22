@@ -1,0 +1,10 @@
+*.pt
+*climatehack.py
+*doxa.yaml
+*__init__.py
+*__pycache__
+ds_total.*
+datapoints*
+predrnn-pytorch
+lightning_logs
+core
