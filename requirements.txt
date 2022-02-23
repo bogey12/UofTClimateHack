@@ -9,7 +9,3 @@ cartopy
 einops
 pytorch-msssim
 tqdm
-torch
-torchvision
-torchaudio
-pytorch-lightning
