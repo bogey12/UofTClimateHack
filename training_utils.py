@@ -42,7 +42,7 @@ class PredictionTrainer(pl.LightningModule):
 
     def training_step(self, training_batch, batch_idx):
         # batch_coordinates, batch_features, batch_targets = training_batch
-        batch_features, batch_targets = training_batch
+        batch_features, batch_targets = training_batch[-2:]
         # print(batch_features)
         if self.convert:
             batch_features = rearrange(batch_features, 'b (t c) h w -> b t c h w', c=1) 
@@ -58,7 +58,7 @@ class PredictionTrainer(pl.LightningModule):
 
     def validation_step(self, training_batch, batch_idx):
         # batch_coordinates, batch_features, batch_targets = training_batch
-        batch_features, batch_targets = training_batch
+        batch_features, batch_targets = training_batch[-2:]
         if self.convert:
             batch_features = rearrange(batch_features, 'b (t c) h w -> b t c h w', c=1) 
         predictions = self.model(batch_features, **self.args)
