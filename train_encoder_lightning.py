@@ -55,7 +55,7 @@ if __name__ == '__main__':
     # print(separate_tup)
     training_ds = dataset.sel(time=slice("2020-07-01 09:00", "2020-10-01 09:00"))
     validation_ds = dataset.sel(time=slice("2020-12-01 09:00", "2020-12-10 09:00"))
-    datapoints = np.load('/datastores/ds-total/ds_total.npz', allow_pickle=True)['datapoints']#.to_list()
+    datapoints = np.load('/datastores/data2/data.npz', allow_pickle=True)['datapoints']#.to_list()
     np.random.shuffle(datapoints)
     tot_points = len(datapoints)
     train_len = int(tot_points*0.8)
