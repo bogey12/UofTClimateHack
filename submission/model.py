@@ -166,12 +166,12 @@ class DoubleConvNorm(nn.Module):
 class Down(nn.Module):
     """Downscaling with maxpool then double conv"""
 
-    def __init__(self, in_channels, out_channels, reduction_ratio=16, separate=True, attention=True,**args):
+    def __init__(self, in_channels, out_channels, reduction_ratio=16, separate=True,**args):
         super().__init__()
         DoubleConv = DoubleConvDS if separate else DoubleConvNorm
         self.maxpool_conv = nn.Sequential(*([nn.Conv2d(in_channels, in_channels, 5, stride=2, padding=2),
             # nn.MaxPool2d(2),
-            DoubleConv(in_channels, out_channels, **args)] + [CBAM(out_channels, reduction_ratio=reduction_ratio)] if attention else [])
+            DoubleConv(in_channels, out_channels, **args)] + ([CBAM(out_channels, reduction_ratio=reduction_ratio)] if separate else []))
         )
 
     def forward(self, x):
@@ -255,9 +255,12 @@ class SameNoMerge(nn.Module):
     def __init__(self, in_channels, out_channels, reduction_ratio=16, separate=True, **args):
         super().__init__()
         DoubleConv = DoubleConvDS if separate else DoubleConvNorm
+        # self.maxpool_conv = nn.Sequential(
+        #     DoubleConv(in_channels, out_channels, **args),
+        #     CBAM(out_channels, reduction_ratio=reduction_ratio)
+        # )
         self.maxpool_conv = nn.Sequential(
-            DoubleConv(in_channels, out_channels, **args),
-            CBAM(out_channels, reduction_ratio=reduction_ratio)
+            *([DoubleConv(in_channels, out_channels, **args)] + ([CBAM(out_channels, reduction_ratio=reduction_ratio)] if separate else []))
         )
     def forward(self, x):
         return self.maxpool_conv(x)
@@ -345,12 +348,12 @@ MEAN = 299.17117
 # STD = 152.96744
 STD = 146.06215
 class Encoder(nn.Module):
-    def __init__(self, config, inputs=12, outputs=24, normalize=True, sigmoid=False) -> None:
+    def __init__(self, config, inputs=12, outputs=24, sigmoid=False) -> None:
         super().__init__()
         self.outputs = outputs
         self.inputs = inputs
         self.config = config
-        self.normalize = normalize
+        self.normalize = config['normalize']
         self.swap = config['swap']
         self.dropout = nn.Dropout(p=config['dropout'])
         # SIZE = config['size']
@@ -358,8 +361,8 @@ class Encoder(nn.Module):
         DoubleConv = DoubleConvDS if config['separate'][1] else DoubleConvNorm
         self.input = DoubleConv(inputs, SIZE)
         n_layers = config['n_layers']
-        self.encoder = nn.ModuleList([Down(SIZE, SIZE*2, separate=config['separate'][1]), Down(SIZE*2, SIZE*4, separate=config['separate'][1])] + [SameNoMerge(SIZE*4, SIZE*4) for _ in range(n_layers)])
-        self.decoder = nn.ModuleList([SameMerge(SIZE*8, SIZE*4) for _ in range(n_layers-1)] + [SameMerge(SIZE*8, SIZE*2)] + [Up(SIZE*4, SIZE, separate=config['separate'][1]), Same(SIZE*2, SIZE, separate=config['separate'][1])])
+        self.encoder = nn.ModuleList([Down(SIZE, SIZE*2, separate=config['separate'][1]), Down(SIZE*2, SIZE*4, separate=config['separate'][1])] + [SameNoMerge(SIZE*4, SIZE*4, separate=config['separate'][1]) for _ in range(n_layers)])
+        self.decoder = nn.ModuleList([SameMerge(SIZE*8, SIZE*4, separate=config['separate'][1]) for _ in range(n_layers-1)] + ([SameMerge(SIZE*8, SIZE*2, separate=config['separate'][1])] if n_layers != 0 else []) + [Up(SIZE*4, SIZE, separate=config['separate'][1]), Same(SIZE*2, SIZE, separate=config['separate'][1])])
         # self.decoder = nn.ModuleList([Up(SIZE*2**i, SIZE*2**(i - 2), separate=config['separate'][1]) for i in range(n_layers, 1, -1)] + [Same(SIZE*2, SIZE, separate=config['separate'][1])])
         if sigmoid:
             self.output = nn.Sequential(
@@ -390,13 +393,36 @@ class Encoder(nn.Module):
     
     def forward(self, features):
         x = features
+        def preprocessing(x):
+            if 'minmax' in self.normalize:
+                mi1 = x.min()
+                ma1 = x.max()
+                x -= mi1
+                x /= (ma1 - mi1)
+                x *= 2
+                x -= 1
+                return x, {'mi1':mi1, 'ma1':ma1}
+            elif 'standardize' in self.normalize:
+                x -= MEAN
+                x /= STD
+                return x, {}
+
+        def postprocessing(x, **args):
+            if 'minmax' in self.normalize:
+                x += 1
+                x /= 2
+                x *= (ma1 - mi1)
+                x += mi1
+                return x
+            elif 'standardize' in self.normalize:
+                return x*STD + MEAN
+
         if self.normalize:
-            x -= MEAN
-            x /= STD
+            x, extra = preprocessing(x)
         x = self.dropout(x)
         x = self.rencoding(x)
         if self.normalize:
-            return x*STD + MEAN
+            return postprocessing(x, **extra)
         else:
             return x
 
@@ -582,7 +608,7 @@ class Decoder1(nn.Module):
             if activation == 'leaky': layers.append(nn.LeakyReLU(inplace=True))
             elif activation == 'relu': layers.append(nn.ReLU(inplace=True))
             elif activation == 'sigmoid': layers.append(nn.Sigmoid())
-        elif type == 'conv_output':
+        elif type == 'convoutput':
             # layers.append(nn.Dropout(p=self.dropout))
             layers.append(nn.Conv2d(in_ch, out_ch, kernel_size=kernel_size, padding=padding, stride=stride, bias=False))
             if activation == 'leaky': layers.append(nn.LeakyReLU(inplace=True))
@@ -615,14 +641,20 @@ class Decoder1(nn.Module):
                 x = torch.cat([encoder_outputs[idx], x], dim=2)
                 x = getattr(self, layer)(x)
                 encoder_outputs[idx] = x
+            elif 'convoutput' in layer:
+                x = encoder_outputs[idx]
+                B, S, C, H, W = x.shape
+                x = x.view(B*S, C, H, W)
+                x = getattr(self, layer)(x)
+                x = x.view(B, S*x.shape[1], 1, x.shape[2], x.shape[3])
         return x
 
 class ConvLSTM(nn.Module):
-    def __init__(self, encoder, decoder, dropout=0.1):
+    def __init__(self, config):
         super().__init__()
         # self.dropout = nn.Dropout(p=0.1)
-        self.encoder = Encoder1(encoder, dropout=dropout)
-        self.decoder = Decoder1(decoder, dropout=dropout)
+        self.encoder = Encoder1(config['encoder'], dropout=config['dropout'])
+        self.decoder = Decoder1(config['decoder'], dropout=config['dropout'])
 
     def forward(self, x, fac=1023):
         x -= MEAN
