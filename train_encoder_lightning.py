@@ -1,6 +1,4 @@
 
-from multiprocessing.dummy import freeze_support
-import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -20,11 +18,6 @@ import pickle
 import pytorch_lightning as pl
 from training_utils import *
 from pytorch_lightning.callbacks import EarlyStopping
-from ray import tune
-from ray.tune import CLIReporter
-from ray.tune.schedulers import ASHAScheduler, PopulationBasedTraining
-from ray.tune.integration.pytorch_lightning import TuneReportCallback, TuneReportCheckpointCallback
-
 
 
 BATCH_SIZE = 1
@@ -40,7 +33,7 @@ if __name__ == '__main__':
     )
     training_ds = dataset.sel(time=slice("2020-07-01 09:00", "2020-10-01 09:00"))
     validation_ds = dataset.sel(time=slice("2020-12-01 09:00", "2020-12-10 09:00"))
-    datapoints = np.load('~/datastores/ds_total/ds_total.npz', allow_pickle=True)['datapoints']#.to_list()
+    datapoints = np.load('datastores/ds_total/ds_total.npz', allow_pickle=True)['datapoints']#.to_list()
     np.random.shuffle(datapoints)
     tot_points = len(datapoints)
     train_len = int(tot_points*0.8)
@@ -69,5 +62,5 @@ if __name__ == '__main__':
     early_stop = EarlyStopping('valid_loss', patience=30, mode='min')
     trainer = pl.Trainer(gpus=1, precision=32, max_epochs=200,callbacks=[early_stop], accumulate_grad_batches=7)#, detect_anomaly=True)#, overfit_batches=1)#, benchmark=True)#, limit_train_batches=1)
     trainer.fit(training_model, training_dl, validation_dl)
-    # torch.save(trainer.model.state_dict(), 'submission/encoder_generic.pt')
+    torch.save(trainer.model.state_dict(), 'encoder_generic.pt')
     
