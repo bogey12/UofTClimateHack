@@ -3,7 +3,6 @@ zarr
 numpy
 matplotlib
 gcsfs
-fsspec
 dask
 einops
 pytorch-msssim
