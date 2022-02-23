@@ -22,7 +22,7 @@ import argparse
 
 parser = argparse.ArgumentParser(description='Train skip conn UNet')
 parser.add_argument('--separate', required=True,
-                    help='size', type=int, nargs="+")
+                    help='size', type=str)
 parser.add_argument('--nlayers', required=True,
                     help='layers', type=int)
 parser.add_argument('--dropout', required=True,
@@ -51,6 +51,7 @@ if __name__ == '__main__':
         engine="zarr",
         chunks="auto",  # Load the data as a Dask array
     )
+    separate_tup = list(map(int, args['separate'].split(' ')))
     # print(separate_tup)
     training_ds = dataset.sel(time=slice("2020-07-01 09:00", "2020-10-01 09:00"))
     validation_ds = dataset.sel(time=slice("2020-12-01 09:00", "2020-12-10 09:00"))
@@ -74,7 +75,7 @@ if __name__ == '__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
     config = {
-        "separate": args['separate'],
+        "separate": separate_tup,
         "n_layers": args['nlayers'],
         "dropout": args['dropout'],
         "swap": args['swap'],
