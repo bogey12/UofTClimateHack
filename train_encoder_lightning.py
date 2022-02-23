@@ -28,7 +28,7 @@ parser.add_argument('--nlayers', required=True,
 parser.add_argument('--dropout', required=True,
                     help='dropout', type=float)
 parser.add_argument('--swap', required=False,
-                    help='swap', type=bool, default=True)
+                    help='swap', type=bool, default=False)
 parser.add_argument('--lr', required=True,
                     help='lr', type=float)
 parser.add_argument('--normalize', required=False,
