@@ -45,11 +45,11 @@ if __name__ == '__main__':
     ch_training.cached_items = training# + testing
     ch_validation = ClimateHackDataset(validation_ds, crops_per_slice=5, day_limit=3, outputs=N_IMS)#, cache=False)
     ch_validation.cached_items = testing
-    training_dl, validation_dl = [DataLoader(ds, batch_size=BATCH_SIZE, num_workers=1, persistent_workers=True, pin_memory=True) for ds in [ch_training, ch_validation]]
-    # training_dl, validation_dl = [DataLoader(ds, batch_size=BATCH_SIZE, num_workers=0, pin_memory=True) for ds in [ch_training, ch_validation]]
+    # training_dl, validation_dl = [DataLoader(ds, batch_size=BATCH_SIZE, num_workers=1, persistent_workers=True, pin_memory=True) for ds in [ch_training, ch_validation]]
+    training_dl, validation_dl = [DataLoader(ds, batch_size=BATCH_SIZE, num_workers=0, pin_memory=True) for ds in [ch_training, ch_validation]]
     # ch_dataloader = DataLoader(ch_dataset, batch_size=BATCH_SIZE, num_workers=4, persistent_workers=True)
-    training_dl.multiprocessing_context = 'spawn'   
-    validation_dl.multiprocessing_context = 'spawn'
+    # training_dl.multiprocessing_context = 'spawn'   
+    # validation_dl.multiprocessing_context = 'spawn'
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     config = {
         "separate": (128, False),
