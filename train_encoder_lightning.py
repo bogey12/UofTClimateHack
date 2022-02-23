@@ -18,6 +18,23 @@ import pickle
 import pytorch_lightning as pl
 from training_utils import *
 from pytorch_lightning.callbacks import EarlyStopping
+import argparse
+
+parser = argparse.ArgumentParser(description='Train skip conn UNet')
+parser.add_argument('--separate', required=True,
+                    help='size', nargs="+", type=int)
+parser.add_argument('--nlayers', required=True,
+                    help='layers', type=int)
+parser.add_argument('--dropout', required=True,
+                    help='dropout', type=float)
+parser.add_argument('--swap', required=True,
+                    help='swap', type=bool)
+parser.add_argument('--lr', required=True,
+                    help='lr', type=float)
+parser.add_argument('--normalize', required=False,
+                    help='norm', type=str, default="standardize")
+args = vars(parser.parse_args())
+print(args)
 
 
 BATCH_SIZE = 1
@@ -52,14 +69,15 @@ if __name__ == '__main__':
     # validation_dl.multiprocessing_context = 'spawn'
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     config = {
-        "separate": (128, False),
-        "n_layers": 1,
-        "dropout": 0.1,
-        "swap": False,
-        "lr": 0.01
+        "separate": args['separate'],
+        "n_layers": args['nlayers'],
+        "dropout": args['dropout'],
+        "swap": args['swap'],
+        "lr": args['lr'],
+        "normalize": args['normalize']
     }
     training_model = PredictionTrainer(config, model=Encoder, device=device, convert=False)
-    early_stop = EarlyStopping('valid_loss', patience=30, mode='min')
+    early_stop = EarlyStopping('valid_loss', patience=20, mode='min')
     trainer = pl.Trainer(gpus=1, precision=32, max_epochs=200,callbacks=[early_stop], accumulate_grad_batches=7)#, detect_anomaly=True)#, overfit_batches=1)#, benchmark=True)#, limit_train_batches=1)
     trainer.fit(training_model, training_dl, validation_dl)
     torch.save(trainer.model.state_dict(), 'encoder_generic.pt')
