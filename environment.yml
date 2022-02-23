@@ -11,7 +11,5 @@ dependencies:
   - cartopy  
   - pip:
     - einops
-    - opencv-python
     - pytorch-msssim
-    - ray
     - tqdm
