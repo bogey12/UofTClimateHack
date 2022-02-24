@@ -61,9 +61,9 @@ if __name__ == '__main__':
     tot_points = len(datapoints)
     train_len = int(tot_points*0.8)
     # datapoints = datapoints.reshape((tot_points, 2))
-    training = datapoints[:train_len].tolist()
-    testing = datapoints[train_len:].tolist()
-
+    training = datapoints[:train_len]
+    testing = datapoints[train_len:]
+    print('loaded data')
     ch_training = ClimateHackDataset2(training)
     ch_validation = ClimateHackDataset2(testing)#, cache=False)
     # training_dl, validation_dl = [DataLoader(ds, batch_size=BATCH_SIZE, num_workers=1, persistent_workers=True, pin_memory=True) for ds in [ch_training, ch_validation]]
