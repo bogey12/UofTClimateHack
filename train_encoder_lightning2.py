@@ -60,7 +60,7 @@ if __name__ == '__main__':
     np.random.shuffle(datapoints)
     tot_points = len(datapoints)
     train_len = int(tot_points*0.8)
-    datapoints = datapoints.reshape((tot_points, 2))
+    # datapoints = datapoints.reshape((tot_points, 2))
     training = datapoints[:train_len].tolist()
     testing = datapoints[train_len:].tolist()
 
