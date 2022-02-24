@@ -200,7 +200,7 @@ class ClimateHackDataset2(IterableDataset):
         self.outputs = outputs
 
 
-    def _get_crop(self, input_slice, target_slice, x_range=None, y_range=None, grid_size=None, randomize=20):
+    def _get_crop(self, input_slice, target_slice, x_range=None, y_range=None, grid_size=None, randomize=10):
         # roughly over the mainland UK
         x_range = x_range or (550, 950-128)
         y_range = y_range or (375, 700-128) 
@@ -211,20 +211,20 @@ class ClimateHackDataset2(IterableDataset):
             shuffle(x_range1)
             y_range1 = list(range(*(y_range + (grid_size[1],))))
             shuffle(y_range1)
+            print(len(x_range1), len(y_range1))
             pairs = itertools.product(x_range1, y_range1)
         
         # y_range = range(*y_range)
         for rand_x, rand_y in pairs:
             rand_x += randint(-min(rand_x - x_range[0], randomize), min(x_range[1] - rand_x, randomize))
             rand_y += randint(-min(rand_y - y_range[0], randomize), min(y_range[1] - rand_y, randomize))
-            # print('PAIR:', rand_x, rand_y)
             # make a data selection
-            input_data = input_slice[:, rand_x:rand_x + 128, rand_y:rand_y + 128]
+            input_data = input_slice[:, rand_x:rand_x+128, rand_y:rand_y + 128]
             # get the input satellite imagery
             if input_data.shape != (12, 128, 128):
                 continue
             # get the target output
-            target_output = target_slice[:, rand_x+32:rand_x+96, rand_y+32:rand_y+96].astype(float32)
+            target_output = target_slice[:, rand_x+32:rand_x+96, rand_y+32:rand_y+96]
             if target_output.shape != (self.outputs, 64, 64):
                 continue
             yield input_data, target_output
@@ -243,6 +243,6 @@ class ClimateHackDataset2(IterableDataset):
                                 yield crop
                         crops += 1
                 else:
-                    for crop in self._get_crop(input_slice, target_slice, grid_size=(128, 128)):
+                    for crop in self._get_crop(input_slice, target_slice, grid_size=(32, 32)):
                         self.cached_items.append(crop)
                         yield crop
