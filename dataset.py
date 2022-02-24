@@ -230,19 +230,26 @@ class ClimateHackDataset2(IterableDataset):
             yield input_data, target_output
 
     def __iter__(self) -> Iterator[T_co]:
-        for day in range(self.dataset.shape[0]):
-            for time_slice in range(0, self.dataset.shape[1] - 12 - self.outputs, 4):
-                input_slice = self.dataset[day][time_slice:time_slice+12]
-                target_slice = self.dataset[day][time_slice+12:time_slice+12+self.outputs]
-                if self.crops_per_slice != 0:
-                    crops = 0
-                    while crops < self.crops_per_slice:
-                        for crop in self._get_crop(input_slice, target_slice):
-                            if crop:
-                                self.cached_items.append(crop)
-                                yield crop
-                        crops += 1
-                else:
-                    for crop in self._get_crop(input_slice, target_slice, grid_size=(32, 32)):
-                        self.cached_items.append(crop)
-                        yield crop
+        if self.cached_items:
+            if self.shuffler:
+                shuffle(self.cached_items)
+            for item in self.cached_items:
+                yield item
+            return
+        else:
+            for day in range(self.dataset.shape[0]):
+                for time_slice in range(0, self.dataset.shape[1] - 12 - self.outputs, 4):
+                    input_slice = self.dataset[day][time_slice:time_slice+12]
+                    target_slice = self.dataset[day][time_slice+12:time_slice+12+self.outputs]
+                    if self.crops_per_slice != 0:
+                        crops = 0
+                        while crops < self.crops_per_slice:
+                            for crop in self._get_crop(input_slice, target_slice):
+                                if crop:
+                                    self.cached_items.append(crop)
+                                    yield crop
+                            crops += 1
+                    else:
+                        for crop in self._get_crop(input_slice, target_slice, grid_size=(32, 32)):
+                            self.cached_items.append(crop)
+                            yield crop
