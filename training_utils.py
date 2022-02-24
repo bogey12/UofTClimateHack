@@ -19,6 +19,7 @@ from pytorch_msssim import MS_SSIM
 from einops import rearrange
 import pickle
 import pytorch_lightning as pl
+import torchvision
 
 class PredictionTrainer(pl.LightningModule):
     def __init__(self, config, model=None, device=torch.device('cpu'), convert=False, data_range=1023, channels=24, **args):
@@ -67,6 +68,10 @@ class PredictionTrainer(pl.LightningModule):
         # print('SHAPE', predictions.shape)
         loss = self.criterion(predictions.unsqueeze(dim=2), batch_targets[:,:predictions.shape[1]].unsqueeze(dim=2))
         self.log('valid_loss', loss, prog_bar=True)
+        #logging, comment if doesnt work
+        grid = torchvision.utils.make_grid(predictions)
+        self.logger.experiment.add_image('predictions', grid, 0)
+
         return loss
 
     # def validation_epoch_end(self, outputs):
