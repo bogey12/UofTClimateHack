@@ -230,7 +230,7 @@ class ClimateHackDataset2(IterableDataset):
             yield input_data, target_output
 
     def __iter__(self) -> Iterator[T_co]:
-        for day in self.dataset.shape[0]:
+        for day in range(self.dataset.shape[0]):
             #print(current_time)#, worker_info.id)
             for time_slice in range(self.dataset.shape[1] - 12 - self.outputs, 4):
                 input_slice = self.dataset[day][time_slice:time_slice+12]
