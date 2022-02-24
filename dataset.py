@@ -231,8 +231,7 @@ class ClimateHackDataset2(IterableDataset):
 
     def __iter__(self) -> Iterator[T_co]:
         for day in range(self.dataset.shape[0]):
-            #print(current_time)#, worker_info.id)
-            for time_slice in range(self.dataset.shape[1] - 12 - self.outputs, 4):
+            for time_slice in range(0, self.dataset.shape[1] - 12 - self.outputs, 4):
                 input_slice = self.dataset[day][time_slice:time_slice+12]
                 target_slice = self.dataset[day][time_slice+12:time_slice+12+self.outputs]
                 if self.crops_per_slice != 0:
