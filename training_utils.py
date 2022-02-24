@@ -69,8 +69,8 @@ class PredictionTrainer(pl.LightningModule):
         loss = self.criterion(predictions.unsqueeze(dim=2), batch_targets[:,:predictions.shape[1]].unsqueeze(dim=2))
         self.log('valid_loss', loss, prog_bar=True)
         #logging, comment if doesnt work
-        grid = torchvision.utils.make_grid(predictions)
-        self.logger.experiment.add_image('predictions', grid, 0)
+        grid = torchvision.utils.make_grid(predictions).view(24, 1, 64, 64)
+        self.logger.experiment.add_images('predictions', grid, 0)
 
         return loss
 
