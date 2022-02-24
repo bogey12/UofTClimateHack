@@ -191,6 +191,7 @@ class ClimateHackDataset2(IterableDataset):
         dataset,
         crops_per_slice: int = 0,
         outputs: int = 24,
+        shuffler: bool = True
     ) -> None:
         super().__init__()
 
@@ -198,7 +199,7 @@ class ClimateHackDataset2(IterableDataset):
         self.crops_per_slice = crops_per_slice
         self.cached_items = []
         self.outputs = outputs
-
+        self.shuffler = shuffler
 
     def _get_crop(self, input_slice, target_slice, x_range=None, y_range=None, grid_size=None, randomize=10):
         # roughly over the mainland UK
