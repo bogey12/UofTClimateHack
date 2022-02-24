@@ -9,6 +9,8 @@ from torchvision.transforms import Normalize, ToTensor
 from einops.layers.torch import Rearrange, Reduce
 
 from einops import rearrange
+
+import numpy as np
 # from perceiver_pytorch import MultiPerceiver, Perceiver
 # from perceiver_pytorch.modalities import InputModality
 # from perceiver_pytorch.encoders import ImageEncoder
@@ -393,6 +395,9 @@ class Encoder(nn.Module):
     
     def forward(self, features):
         x = features
+        if self.config['local_norm']:
+            MEAN = torch.mean(x)
+            STD = torch.std(x)
         def preprocessing(x):
             if 'minmax' in self.normalize:
                 mi1 = x.min()

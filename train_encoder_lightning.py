@@ -35,6 +35,9 @@ parser.add_argument('--normalize', required=False,
                     help='norm', type=str, default="standardize")
 parser.add_argument('--epochs', required=False,
                     help='epochs', type=int, default=200)
+parser.add_argument('--localnorm', required=False,
+                    help='local norm', type=bool, default=True)
+
 
 args = vars(parser.parse_args())
 print(args)
@@ -55,8 +58,8 @@ if __name__ == '__main__':
     # print(separate_tup)
     training_ds = dataset.sel(time=slice("2020-07-01 09:00", "2020-10-01 09:00"))
     validation_ds = dataset.sel(time=slice("2020-12-01 09:00", "2020-12-10 09:00"))
-    # datapoints = np.load('/datastores/ds-total/ds_total.npz', allow_pickle=True)['datapoints']#.to_list()
-    datapoints = np.load('/datastores/data2/data.npz', allow_pickle=True)['data']#.to_list()
+    datapoints = np.load('/datastores/ds-total/ds_total.npz', allow_pickle=True)['datapoints']#.to_list()
+    # datapoints = np.load('/datastores/data2/data.npz', allow_pickle=True)['data']#.to_list()
     np.random.shuffle(datapoints)
     tot_points = len(datapoints)
     train_len = int(tot_points*0.8)
@@ -81,7 +84,8 @@ if __name__ == '__main__':
         "dropout": args['dropout'],
         "swap": args['swap'],
         "lr": args['lr'],
-        "normalize": args['normalize']
+        "normalize": args['normalize'], 
+        "local_norm": args['localnorm']
     }
     training_model = PredictionTrainer(config, model=Encoder, device=device, convert=False)
     early_stop = EarlyStopping('valid_loss', patience=20, mode='min')
