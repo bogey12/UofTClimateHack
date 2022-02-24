@@ -230,38 +230,20 @@ class ClimateHackDataset2(IterableDataset):
             yield input_data, target_output
 
     def __iter__(self) -> Iterator[T_co]:
-        worker_info = torch.utils.data.get_worker_info()
-        
-        if self.cached_items:
-            if worker_info:
-                per_worker = math.ceil(len(self.cached_items)/worker_info.num_workers)
-                cached_items = self.cached_items[per_worker*worker_info.id:per_worker*(worker_info.id + 1)]
-            else:
-                cached_items = self.cached_items
-            shuffle(cached_items)
-            for item in cached_items:
-                yield item
-            return
-        else:
-            if worker_info:
-                day_len = (max_date - min_date).days
-                per_worker = timedelta(days=math.ceil(day_len/worker_info.num_workers))
-                min_date += worker_info.id*per_worker
-                max_date = min_date + per_worker
-            for day in self.dataset.shape[0]:
-                #print(current_time)#, worker_info.id)
-                for time_slice in range(self.dataset.shape[1] - 12 - self.outputs, 4):
-                    input_slice = self.dataset[day][time_slice:time_slice+12]
-                    target_slice = self.dataset[day][time_slice+12:time_slice+self.outputs]
-                    if self.crops_per_slice != 0:
-                        crops = 0
-                        while crops < self.crops_per_slice:
-                            for crop in self._get_crop(input_slice, target_slice):
-                                if crop:
-                                    self.cached_items.append(crop)
-                                    yield crop
-                            crops += 1
-                    else:
-                        for crop in self._get_crop(input_slice, target_slice, grid_size=(128, 128)):
-                            self.cached_items.append(crop)
-                            yield crop
+        for day in self.dataset.shape[0]:
+            #print(current_time)#, worker_info.id)
+            for time_slice in range(self.dataset.shape[1] - 12 - self.outputs, 4):
+                input_slice = self.dataset[day][time_slice:time_slice+12]
+                target_slice = self.dataset[day][time_slice+12:time_slice+self.outputs]
+                if self.crops_per_slice != 0:
+                    crops = 0
+                    while crops < self.crops_per_slice:
+                        for crop in self._get_crop(input_slice, target_slice):
+                            if crop:
+                                self.cached_items.append(crop)
+                                yield crop
+                        crops += 1
+                else:
+                    for crop in self._get_crop(input_slice, target_slice, grid_size=(128, 128)):
+                        self.cached_items.append(crop)
+                        yield crop
