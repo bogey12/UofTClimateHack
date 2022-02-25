@@ -35,6 +35,8 @@ parser.add_argument('--normalize', required=False,
                     help='norm', type=str, default="standardize")
 parser.add_argument('--epochs', required=False,
                     help='epochs', type=int, default=200)
+parser.add_argument('--localnorm', required=False,
+                    help='local norm', type=bool, default=True)
 
 args = vars(parser.parse_args())
 print(args)
@@ -79,7 +81,8 @@ if __name__ == '__main__':
         "dropout": args['dropout'],
         "swap": args['swap'],
         "lr": args['lr'],
-        "normalize": args['normalize']
+        "normalize": args['normalize'], 
+        "local_norm": args['localnorm']
     }
     training_model = PredictionTrainer(config, model=Encoder, device=device, convert=False)
     early_stop = EarlyStopping('valid_loss', patience=20, mode='min')
