@@ -39,6 +39,8 @@ parser.add_argument('--localnorm', required=False,
                     help='local norm', type=bool, default=True)
 parser.add_argument('--patience', required=False,
                     help='patience', type=int, default=20)
+parser.add_argument('--outputmean', required=False, type=float, default=0)
+parser.add_argument('--outputstd', required=False, type=float, default=0)
 
 args = vars(parser.parse_args())
 print(args)
@@ -86,7 +88,9 @@ if __name__ == '__main__':
         "swap": args['swap'],
         "lr": args['lr'],
         "normalize": args['normalize'], 
-        "local_norm": args['localnorm']
+        "local_norm": args['localnorm'],
+        "output_mean": args['outputmean'],
+        "output_std": args['outputstd']
     }
     training_model = PredictionTrainer(config, model=Encoder, device=device, convert=False)
     early_stop = EarlyStopping('valid_loss', patience=args['patience'], mode='min')

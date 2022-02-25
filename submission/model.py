@@ -427,7 +427,10 @@ class Encoder(nn.Module):
         x = self.dropout(x)
         x = self.rencoding(x)
         if self.normalize:
-            return postprocessing(x, **extra)
+            if self.config['output_std'] != 0:
+                MEAN = self.config['output_mean']
+                STD = self.config['output_std']
+            return postprocessing(x, MEAN=MEAN, STD=STD, **extra)
         else:
             return x
 
