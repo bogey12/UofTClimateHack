@@ -66,7 +66,7 @@ class PredictionTrainer(pl.LightningModule):
         if self.convert:
             predictions = rearrange(predictions, 'b t c h w -> b (t c) h w')
         print('SHAPE', predictions.shape)
-        loss = self.criterion(predictions.unsqueeze(dim=2), batch_targets[:,:predictions.shape[1]].unsqueeze(dim=2))
+        loss = self.criterion(predictions.unsqueeze(dim=2), batch_targets[:,:24].unsqueeze(dim=2))
         self.log('valid_loss', loss, prog_bar=True)
         #logging, comment if doesnt work
         # grid = torchvision.utils.make_grid(predictions).view(24, 1, 64, 64)
