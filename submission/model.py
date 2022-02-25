@@ -350,10 +350,10 @@ MEAN = 299.17117
 # STD = 152.96744
 STD = 146.06215
 class Encoder(nn.Module):
-    def __init__(self, config, inputs=12, outputs=24, sigmoid=False) -> None:
+    def __init__(self, config, sigmoid=False) -> None:
         super().__init__()
-        self.outputs = outputs
-        self.inputs = inputs
+        self.outputs = config['outputs']
+        self.inputs = config['inputs']
         self.config = config
         self.normalize = config['normalize']
         self.swap = config['swap']
