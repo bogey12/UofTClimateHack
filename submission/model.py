@@ -398,7 +398,7 @@ class Encoder(nn.Module):
         if self.config['local_norm']:
             MEAN = torch.mean(x)
             STD = torch.std(x)
-        def preprocessing(x):
+        def preprocessing(x, **args):
             if 'minmax' in self.normalize:
                 mi1 = x.min()
                 ma1 = x.max()
@@ -423,7 +423,7 @@ class Encoder(nn.Module):
                 return x*STD + MEAN
 
         if self.normalize:
-            x, extra = preprocessing(x)
+            x, extra = preprocessing(x, MEAN=MEAN, STD=STD)
         x = self.dropout(x)
         x = self.rencoding(x)
         if self.normalize:
