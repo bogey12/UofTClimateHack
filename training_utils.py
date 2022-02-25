@@ -25,7 +25,10 @@ class PredictionTrainer(pl.LightningModule):
     def __init__(self, config, model=None, device=torch.device('cpu'), convert=False, data_range=1023, **args):
         super().__init__()
         self.model = model(config)
-        self.criterion = MS_SSIMLoss(channels=config['outputs'], data_range=data_range)
+        if config['opt_flow']:
+            self.criterion = nn.MSELoss()
+        else:
+            self.criterion = MS_SSIMLoss(channels=config['outputs'], data_range=data_range)
         # self.criterion = nn.MSELoss()
         self.config = config 
         self.args = args
