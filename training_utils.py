@@ -65,7 +65,7 @@ class PredictionTrainer(pl.LightningModule):
         predictions = self.model(batch_features, **self.args)
         if self.convert:
             predictions = rearrange(predictions, 'b t c h w -> b (t c) h w')
-        target = torch.tensor(np.array(batch_targets)).view(1, 24, 64, 64)
+        target = batch_targets.view(1, 24, 64, 64)
         # loss = self.criterion(predictions.unsqueeze(dim=2), batch_targets[:,:24].unsqueeze(dim=2))
         loss = self.criterion(predictions, target[:,:predictions.shape[1]])
         self.log('valid_loss', loss, prog_bar=True)
