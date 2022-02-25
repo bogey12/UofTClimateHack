@@ -42,6 +42,7 @@ parser.add_argument('--patience', required=False,
 parser.add_argument('--outputmean', required=False, type=float, default=0)
 parser.add_argument('--outputstd', required=False, type=float, default=0)
 parser.add_argument('--dataset', required=False, type=str, default="ds-total/ds_total.npz")
+parser.add_argument('--optflow', required=False, type=bool, default=False)
 args = vars(parser.parse_args())
 print(args)
 
@@ -90,7 +91,8 @@ if __name__ == '__main__':
         "normalize": args['normalize'], 
         "local_norm": args['localnorm'],
         "output_mean": args['outputmean'],
-        "output_std": args['outputstd']
+        "output_std": args['outputstd'],
+        "opt_flow":args['optflow']
     }
     training_model = PredictionTrainer(config, model=Encoder, device=device, convert=False)
     early_stop = EarlyStopping('valid_loss', patience=args['patience'], mode='min')
