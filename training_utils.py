@@ -67,7 +67,7 @@ class PredictionTrainer(pl.LightningModule):
         predictions = self.model(batch_features, **self.args)
         if self.convert:
             predictions = rearrange(predictions, 'b t c h w -> b (t c) h w')
-        if self.config['optflow']:
+        if self.config['opt_flow']:
             predictions = rearrange(predictions, 'b (t c) h w -> b t h w c', c=2)
         # target = torch.tensor(batch_targets).view(1, 24, 64, 64)
         # loss = self.criterion(predictions.unsqueeze(dim=2), batch_targets[:,:24].unsqueeze(dim=2))
