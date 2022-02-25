@@ -22,10 +22,10 @@ import pytorch_lightning as pl
 import torchvision
 
 class PredictionTrainer(pl.LightningModule):
-    def __init__(self, config, model=None, device=torch.device('cpu'), convert=False, data_range=1023, channels=24, **args):
+    def __init__(self, config, model=None, device=torch.device('cpu'), convert=False, data_range=1023, **args):
         super().__init__()
         self.model = model(config)
-        self.criterion = MS_SSIMLoss(channels=channels, data_range=data_range)
+        self.criterion = MS_SSIMLoss(channels=config['outputs'], data_range=data_range)
         # self.criterion = nn.MSELoss()
         self.config = config 
         self.args = args
@@ -50,11 +50,16 @@ class PredictionTrainer(pl.LightningModule):
         predictions = self.model(batch_features, **self.args)
         if self.convert:
             predictions = rearrange(predictions, 'b t c h w -> b (t c) h w')
-        if self.config['optflow']:
-            predictions = rearrange(predictions, 'b (t c) h w -> b t h w c', c=2)
+        # if self.config['optflow']:
+        #     predictions = rearrange(predictions, 'b (t c) h w -> b t h w c', c=2)
         # batch_targets /= self.data_range
         # print(predictions)
-        loss = self.criterion(predictions, batch_targets[:,:predictions.shape[1]])
+        if not self.config['opt_flow']:
+            loss = self.criterion(predictions.unsqueeze(dim=2), batch_targets[:,:24].unsqueeze(dim=2))
+        else:
+            target = rearrange(batch_targets[:,:predictions.shape[1]], 'b t h w c -> b (t c) h w')
+            loss = self.criterion(predictions, target)
+        # loss = self.criterion(predictions, batch_targets[:,:predictions.shape[1]])
         # print(loss)
         self.log('train_loss', loss, prog_bar=True)
         return loss
@@ -67,11 +72,15 @@ class PredictionTrainer(pl.LightningModule):
         predictions = self.model(batch_features, **self.args)
         if self.convert:
             predictions = rearrange(predictions, 'b t c h w -> b (t c) h w')
-        if self.config['opt_flow']:
-            predictions = rearrange(predictions, 'b (t c) h w -> b t h w c', c=2)
+        # if self.config['opt_flow']:
+        #     predictions = rearrange(predictions, 'b (t c) h w -> b t h w c', c=2)
         # target = torch.tensor(batch_targets).view(1, 24, 64, 64)
-        # loss = self.criterion(predictions.unsqueeze(dim=2), batch_targets[:,:24].unsqueeze(dim=2))
-        loss = self.criterion(predictions, batch_targets[:,:predictions.shape[1]])
+        if not self.config['opt_flow']:
+            loss = self.criterion(predictions.unsqueeze(dim=2), batch_targets[:,:24].unsqueeze(dim=2))
+        else:
+            target = rearrange(batch_targets[:,:predictions.shape[1]], 'b t h w c -> b (t c) h w')
+            loss = self.criterion(predictions, target)
+
         self.log('valid_loss', loss, prog_bar=True)
         #logging, comment if doesnt work
         # grid = torchvision.utils.make_grid(predictions).view(24, 1, 64, 64)
