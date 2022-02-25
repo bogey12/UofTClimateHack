@@ -354,6 +354,9 @@ class Encoder(nn.Module):
         super().__init__()
         self.outputs = config['outputs']
         self.inputs = config['inputs']
+        outputs = config['outputs']
+        inputs = config['inputs']
+
         self.config = config
         self.normalize = config['normalize']
         self.swap = config['swap']
