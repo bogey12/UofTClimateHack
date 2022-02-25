@@ -37,7 +37,8 @@ parser.add_argument('--epochs', required=False,
                     help='epochs', type=int, default=200)
 parser.add_argument('--localnorm', required=False,
                     help='local norm', type=bool, default=True)
-
+parser.add_argument('--patience', required=False,
+                    help='patience', type=int, default=20)
 
 args = vars(parser.parse_args())
 print(args)
@@ -88,7 +89,7 @@ if __name__ == '__main__':
         "local_norm": args['localnorm']
     }
     training_model = PredictionTrainer(config, model=Encoder, device=device, convert=False)
-    early_stop = EarlyStopping('valid_loss', patience=20, mode='min')
+    early_stop = EarlyStopping('valid_loss', patience=args['patience'], mode='min')
     trainer = pl.Trainer(gpus=1, precision=32, max_epochs=args['epochs'], callbacks=[early_stop], accumulate_grad_batches=7)#, detect_anomaly=True)#, overfit_batches=1)#, benchmark=True)#, limit_train_batches=1)
     trainer.fit(training_model, training_dl, validation_dl)
     torch.save(trainer.model.state_dict(), 'encoder_generic.pt')
