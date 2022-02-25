@@ -41,7 +41,7 @@ parser.add_argument('--patience', required=False,
                     help='patience', type=int, default=20)
 parser.add_argument('--outputmean', required=False, type=float, default=0)
 parser.add_argument('--outputstd', required=False, type=float, default=0)
-
+parser.add_argument('--dataset', required=False, type=str, default="ds-total/ds_total.npz")
 args = vars(parser.parse_args())
 print(args)
 
@@ -61,7 +61,7 @@ if __name__ == '__main__':
     # print(separate_tup)
     training_ds = dataset.sel(time=slice("2020-07-01 09:00", "2020-10-01 09:00"))
     validation_ds = dataset.sel(time=slice("2020-12-01 09:00", "2020-12-10 09:00"))
-    datapoints = np.load('/datastores/ds-total/ds_total.npz', allow_pickle=True)['datapoints']#.to_list()
+    datapoints = np.load(f'/datastores/{args["dataset"]}', allow_pickle=True)['datapoints']#.to_list()
     # datapoints = np.load('/datastores/data2/data.npz', allow_pickle=True)['data']#.to_list()
     np.random.shuffle(datapoints)
     tot_points = len(datapoints)
