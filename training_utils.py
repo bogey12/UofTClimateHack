@@ -60,10 +60,10 @@ class PredictionTrainer(pl.LightningModule):
         if not self.config['opt_flow']:
             loss = self.criterion(predictions.unsqueeze(dim=2), batch_targets[:,:24].unsqueeze(dim=2))
         else:
-            target = rearrange(batch_targets[:,:predictions.shape[1]], 'b t h w c -> b (t c) h w')
-            loss = self.criterion(predictions, target)
+            predictions = rearrange(predictions, 'b (t c) h w -> b t h w c', c=2)
+            # target = rearrange(batch_targets[:,:predictions.shape[1]], 'b t h w c -> b (t c) h w')
+            loss = self.criterion(predictions, batch_targets[:,:predictions.shape[1]])
         # loss = self.criterion(predictions, batch_targets[:,:predictions.shape[1]])
-        # print(loss)
         self.log('train_loss', loss, prog_bar=True)
         return loss
 
@@ -81,8 +81,9 @@ class PredictionTrainer(pl.LightningModule):
         if not self.config['opt_flow']:
             loss = self.criterion(predictions.unsqueeze(dim=2), batch_targets[:,:24].unsqueeze(dim=2))
         else:
-            target = rearrange(batch_targets[:,:predictions.shape[1]], 'b t h w c -> b (t c) h w')
-            loss = self.criterion(predictions, target)
+            predictions = rearrange(predictions, 'b (t c) h w -> b t h w c', c=2)
+            # target = rearrange(batch_targets[:,:predictions.shape[1]], 'b t h w c -> b (t c) h w')
+            loss = self.criterion(predictions, batch_targets[:,:predictions.shape[1]])
 
         self.log('valid_loss', loss, prog_bar=True)
         #logging, comment if doesnt work
