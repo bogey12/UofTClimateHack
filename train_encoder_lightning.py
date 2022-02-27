@@ -45,6 +45,7 @@ parser.add_argument('--dataset', required=False, type=str, default="ds-total/ds_
 parser.add_argument('--optflow', required=False, type=bool, default=True)
 parser.add_argument('--inputs', required=False, type=int, default=12)
 parser.add_argument('--outputs', required=False, type=int, default=24)
+parser.add_argument('--inoptflow', required=False, type=int, default=24)
 args = vars(parser.parse_args())
 print(args)
 
@@ -96,7 +97,8 @@ if __name__ == '__main__':
         "output_std": args['outputstd'],
         "opt_flow":args['optflow'],
         "inputs":args['inputs'],
-        "outputs":args['outputs']
+        "outputs":args['outputs'],
+        "in_opt_flow":args['inoptflow']
     }
     training_model = PredictionTrainer(config, model=Encoder, device=device, convert=False)
     early_stop = EarlyStopping('valid_loss', patience=args['patience'], mode='min')
