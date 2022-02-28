@@ -70,7 +70,6 @@ if __name__ == '__main__':
         engine="zarr",
         chunks="auto",  # Load the data as a Dask array
     )
-    separate_tup = list(map(int, args['separate'].split(' ')))
     # print(separate_tup)
     training_ds = dataset.sel(time=slice("2020-07-01 09:00", "2020-10-01 09:00"))
     validation_ds = dataset.sel(time=slice("2020-12-01 09:00", "2020-12-10 09:00"))
