@@ -46,6 +46,7 @@ parser.add_argument('--optflow', required=False, type=bool, default=True)
 parser.add_argument('--inputs', required=False, type=int, default=12)
 parser.add_argument('--outputs', required=False, type=int, default=24)
 parser.add_argument('--inoptflow', required=False, type=int, default=0)
+parser.add_argument('--criterion', required=False, type=str, default="msssim")
 args = vars(parser.parse_args())
 print(args)
 
@@ -98,7 +99,8 @@ if __name__ == '__main__':
         "opt_flow":args['optflow'],
         "inputs":args['inputs'],
         "outputs":args['outputs'],
-        "in_opt_flow":args['inoptflow']
+        "in_opt_flow":args['inoptflow'],
+        "criterion": args['criterion']
     }
     training_model = PredictionTrainer(config, model=Encoder, device=device, convert=False)
     early_stop = EarlyStopping('valid_loss', patience=args['patience'], mode='min')

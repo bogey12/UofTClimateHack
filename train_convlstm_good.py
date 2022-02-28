@@ -40,6 +40,7 @@ parser.add_argument('--patience', required=False,
 parser.add_argument('--dataset', required=False, type=str, default="ds-total/ds_total.npz")
 parser.add_argument('--inputs', required=False, type=int, default=12)
 parser.add_argument('--outputs', required=False, type=int, default=24)
+parser.add_argument('--criterion', required=False, type=str, default="msssim")
 
 args = vars(parser.parse_args())
 print(args)
@@ -99,7 +100,7 @@ if __name__ == '__main__':
         "local_norm": args['localnorm'],
         "in_opt_flow": False,
         "opt_flow": False,
-        "criterion": 'mse',
+        "criterion": args['criterion'],
         "output_mean": 0,
         "output_std": 0,
         "inputs":args['inputs'],
