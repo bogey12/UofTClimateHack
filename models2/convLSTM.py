@@ -9,11 +9,12 @@ from config import cfg
 class ConvLSTM(nn.Module):
     def __init__(self, input_channel, num_filter, b_h_w, kernel_size, stride=1, padding=1):
         super().__init__()
-        self._conv = nn.Conv2d(in_channels=input_channel + num_filter,
+        self._conv = nn.Sequential(nn.Conv2d(in_channels=input_channel + num_filter,
                                out_channels=num_filter*4,
                                kernel_size=kernel_size,
                                stride=stride,
-                               padding=padding)
+                               padding=padding),
+                               nn.GroupNorm(4, 4*num_filter))
         self._batch_size, self._state_height, self._state_width = b_h_w
         # if using requires_grad flag, torch.save will not save parameters in deed although it may be updated every epoch.
         # Howerver, if you use declare an optimizer like Adam(model.parameters()),
