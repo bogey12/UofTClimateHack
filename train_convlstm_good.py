@@ -13,7 +13,7 @@ import numpy as np
 # import cv2
 # from submission.model import *
 from models2.forecaster import Forecaster
-from models2.encoder import Encoder
+from models2.encoder import Encoder as Encoder2
 from models2.model import EF
 from models2.loss import Weighted_mse_mae
 from models2.net_params import convlstm_encoder_params, convlstm_forecaster_params
@@ -48,7 +48,7 @@ print(args)
 class TempModel(nn.Module):
     def __init__(self, config) -> None:
         super().__init__()
-        self.encoder = Encoder(convlstm_encoder_params[0], convlstm_encoder_params[1])
+        self.encoder = Encoder2(convlstm_encoder_params[0], convlstm_encoder_params[1])
         self.forecaster = Forecaster(convlstm_forecaster_params[0], convlstm_forecaster_params[1])
         self.ef = EF(self.encoder, self.forecaster)
 
@@ -74,7 +74,7 @@ if __name__ == '__main__':
     training_ds = dataset.sel(time=slice("2020-07-01 09:00", "2020-10-01 09:00"))
     validation_ds = dataset.sel(time=slice("2020-12-01 09:00", "2020-12-10 09:00"))
     datapoints = np.load(f'/datastores/{args["dataset"]}', allow_pickle=True)['datapoints']#.to_list()
-    # datapoints = np.load('/datastores/data2/data.npz', allow_pickle=True)['data']#.to_list()
+    # datapoints = np.load('/datastores/data2/data. npz', allow_pickle=True)['data']#.to_list()
     np.random.shuffle(datapoints)
     tot_points = len(datapoints)
     train_len = int(tot_points*0.8)
