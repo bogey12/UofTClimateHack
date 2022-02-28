@@ -31,7 +31,7 @@ class PredictionTrainer(pl.LightningModule):
             self.criterion = nn.MSELoss()
         elif config['criterion'] == 'msssim':
             self.criterion = MS_SSIMLoss(channels=config['outputs'], data_range=data_range)
-            
+
         # self.criterion = nn.MSELoss()
         self.config = config 
         self.args = args
@@ -56,8 +56,8 @@ class PredictionTrainer(pl.LightningModule):
         if self.convert:
             batch_features = rearrange(batch_features, 'b (t c) h w -> b t c h w', c=1)
         
-        MEAN = None
-        STD = None
+        MEAN = 299.17117
+        STD = 146.06215
         mi1 = None
         ma1 = None
         if self.config['normalize']:
@@ -65,15 +65,15 @@ class PredictionTrainer(pl.LightningModule):
                 MEAN = torch.mean(batch_features)
                 STD = torch.std(batch_features)
             if self.config['normalize'] == 'standardize':
-                x -= MEAN
-                x /= STD
+                batch_features -= MEAN
+                batch_features /= STD
             elif self.config['normalize'] == 'minmax':
-                mi1 = x.min()
-                ma1 = x.max()
-                x -= mi1
-                x /= (ma1 - mi1)
-                x *= 2
-                x -= 1
+                mi1 = batch_features.min()
+                ma1 = batch_features.max()
+                batch_features -= mi1
+                batch_features /= (ma1 - mi1)
+                batch_features *= 2
+                batch_features -= 1
         predictions = self.model(batch_features, **self.args)
         if self.convert:
             predictions = rearrange(predictions, 'b t c h w -> b (t c) h w')
@@ -82,13 +82,13 @@ class PredictionTrainer(pl.LightningModule):
                 MEAN = self.config['output_mean']
                 STD = self.config['output_std']
             if self.config['normalize'] == 'standardize':
-                x *= STD
-                x += MEAN
+                predictions *= STD
+                predictions += MEAN
             elif self.config['normalize'] == 'minmax':
-                x += 1
-                x /= 2
-                x *= (ma1 - mi1)
-                x += mi1
+                predictions += 1
+                predictions /= 2
+                predictions *= (ma1 - mi1)
+                predictions += mi1
                 
         # if self.config['optflow']:
         #     predictions = rearrange(predictions, 'b (t c) h w -> b t h w c', c=2)
