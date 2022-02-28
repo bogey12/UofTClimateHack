@@ -42,7 +42,7 @@ parser.add_argument('--patience', required=False,
 parser.add_argument('--outputmean', required=False, type=float, default=0)
 parser.add_argument('--outputstd', required=False, type=float, default=0)
 parser.add_argument('--dataset', required=False, type=str, default="ds-total/ds_total.npz")
-parser.add_argument('--optflow', required=False, type=bool, default=True)
+parser.add_argument('--optflow', required=False, type=bool, default=False)
 parser.add_argument('--inputs', required=False, type=int, default=12)
 parser.add_argument('--outputs', required=False, type=int, default=24)
 parser.add_argument('--inoptflow', required=False, type=int, default=0)
