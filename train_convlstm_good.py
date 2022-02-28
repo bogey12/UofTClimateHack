@@ -53,7 +53,7 @@ class TempModel(nn.Module):
         self.ef = EF(self.encoder, self.forecaster)
 
     def forward(self, features):
-        x = rearrange(features, 't b c h w -> b (t c) h w')
+        x = rearrange(features, 'b (c t) h w -> t b c h w', c=1)
         x = self.dropout(x)
         x = self.rencoding(x)
         x = rearrange(x, 't b c h w -> b (t c) h w')
