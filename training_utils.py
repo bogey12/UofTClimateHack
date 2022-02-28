@@ -47,15 +47,7 @@ class PredictionTrainer(pl.LightningModule):
         return {'optimizer': optimizer, 'lr_scheduler': lr_scheduler, 'monitor':'valid_loss'}
         # return optimizer
 
-    def training_step(self, training_batch, batch_idx):
-        # batch_coordinates, batch_features, batch_targets = training_batch
-        batch_features, batch_targets = training_batch[-2:]
-        if self.config['in_opt_flow']:
-            batch_features = rearrange(batch_features, 'b t h w c -> b (t c) h w', c=2) 
-        # print(batch_features)
-        if self.convert:
-            batch_features = rearrange(batch_features, 'b (t c) h w -> b t c h w', c=1)
-        
+    def preprocessing(self, batch_features):
         MEAN = 299.17117
         STD = 146.06215
         mi1 = None
@@ -74,7 +66,13 @@ class PredictionTrainer(pl.LightningModule):
                 batch_features /= (ma1 - mi1)
                 batch_features *= 2
                 batch_features -= 1
-        predictions = self.model(batch_features, **self.args)
+        return batch_features, {'MEAN':MEAN, 'STD':STD, 'mi1':mi1, 'ma1':ma1}
+
+    def postprocessing(self, predictions, extra):
+        MEAN = extra['MEAN']
+        STD = extra['STD']
+        mi1 = extra['mi1']
+        ma1 = extra['ma1']
         if self.convert:
             predictions = rearrange(predictions, 'b t c h w -> b (t c) h w')
         if self.config['normalize']:
@@ -89,7 +87,20 @@ class PredictionTrainer(pl.LightningModule):
                 predictions /= 2
                 predictions *= (ma1 - mi1)
                 predictions += mi1
-                
+        return predictions
+
+
+    def training_step(self, training_batch, batch_idx):
+        # batch_coordinates, batch_features, batch_targets = training_batch
+        batch_features, batch_targets = training_batch[-2:]
+        if self.config['in_opt_flow']:
+            batch_features = rearrange(batch_features, 'b t h w c -> b (t c) h w', c=2) 
+        # print(batch_features)
+        if self.convert:
+            batch_features = rearrange(batch_features, 'b (t c) h w -> b t c h w', c=1)
+        batch_features, extra = self.preprocessing(batch_features)
+        predictions = self.model(batch_features, **self.args)
+        predictions = self.postprocessing(predictions, extra)
         # if self.config['optflow']:
         #     predictions = rearrange(predictions, 'b (t c) h w -> b t h w c', c=2)
         # batch_targets /= self.data_range
@@ -111,10 +122,11 @@ class PredictionTrainer(pl.LightningModule):
             batch_features = rearrange(batch_features, 'b t h w c -> b (t c) h w', c=2) 
         if self.convert:
             batch_features = rearrange(batch_features, 'b (t c) h w -> b t c h w', c=1) 
-     
+        batch_features, extra = self.preprocessing(batch_features)
         predictions = self.model(batch_features, **self.args)
         if self.convert:
             predictions = rearrange(predictions, 'b t c h w -> b (t c) h w')
+        predictions = self.postprocessing(predictions, extra)
         # if self.config['opt_flow']:
         #     predictions = rearrange(predictions, 'b (t c) h w -> b t h w c', c=2)
         # target = torch.tensor(batch_targets).view(1, 24, 64, 64)
