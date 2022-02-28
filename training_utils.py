@@ -20,15 +20,18 @@ from einops import rearrange
 import pickle
 import pytorch_lightning as pl
 import torchvision
+from models2.loss import Weighted_mse_mae
+
 
 class PredictionTrainer(pl.LightningModule):
     def __init__(self, config, model=None, device=torch.device('cpu'), convert=False, data_range=1023, **args):
         super().__init__()
         self.model = model(config)
-        if config['opt_flow']:
+        if config['criterion'] == 'mse':
             self.criterion = nn.MSELoss()
-        else:
+        elif config['criterion'] == 'msssim':
             self.criterion = MS_SSIMLoss(channels=config['outputs'], data_range=data_range)
+            
         # self.criterion = nn.MSELoss()
         self.config = config 
         self.args = args
@@ -47,14 +50,46 @@ class PredictionTrainer(pl.LightningModule):
     def training_step(self, training_batch, batch_idx):
         # batch_coordinates, batch_features, batch_targets = training_batch
         batch_features, batch_targets = training_batch[-2:]
-        # print(batch_features)
         if self.config['in_opt_flow']:
             batch_features = rearrange(batch_features, 'b t h w c -> b (t c) h w', c=2) 
+        # print(batch_features)
         if self.convert:
-            batch_features = rearrange(batch_features, 'b (t c) h w -> b t c h w', c=1) 
+            batch_features = rearrange(batch_features, 'b (t c) h w -> b t c h w', c=1)
+        
+        MEAN = None
+        STD = None
+        mi1 = None
+        ma1 = None
+        if self.config['normalize']:
+            if self.config['local_norm']:
+                MEAN = torch.mean(batch_features)
+                STD = torch.std(batch_features)
+            if self.config['normalize'] == 'standardize':
+                x -= MEAN
+                x /= STD
+            elif self.config['normalize'] == 'minmax':
+                mi1 = x.min()
+                ma1 = x.max()
+                x -= mi1
+                x /= (ma1 - mi1)
+                x *= 2
+                x -= 1
         predictions = self.model(batch_features, **self.args)
         if self.convert:
             predictions = rearrange(predictions, 'b t c h w -> b (t c) h w')
+        if self.config['normalize']:
+            if self.config['output_std']:
+                MEAN = self.config['output_mean']
+                STD = self.config['output_std']
+            if self.config['normalize'] == 'standardize':
+                x *= STD
+                x += MEAN
+            elif self.config['normalize'] == 'minmax':
+                x += 1
+                x /= 2
+                x *= (ma1 - mi1)
+                x += mi1
+                
         # if self.config['optflow']:
         #     predictions = rearrange(predictions, 'b (t c) h w -> b t h w c', c=2)
         # batch_targets /= self.data_range

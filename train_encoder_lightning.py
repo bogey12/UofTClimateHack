@@ -45,7 +45,7 @@ parser.add_argument('--dataset', required=False, type=str, default="ds-total/ds_
 parser.add_argument('--optflow', required=False, type=bool, default=True)
 parser.add_argument('--inputs', required=False, type=int, default=12)
 parser.add_argument('--outputs', required=False, type=int, default=24)
-parser.add_argument('--inoptflow', required=False, type=int, default=24)
+parser.add_argument('--inoptflow', required=False, type=int, default=0)
 args = vars(parser.parse_args())
 print(args)
 
