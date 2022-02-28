@@ -43,7 +43,7 @@ class PredictionTrainer(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters(), lr=self.config['lr'])#, weight_decay=1e-8)
-        lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=10, verbose=True)
+        lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=10, verbose=True, factor=0.7)
         return {'optimizer': optimizer, 'lr_scheduler': lr_scheduler, 'monitor':'valid_loss'}
         # return optimizer
 
@@ -87,8 +87,8 @@ class PredictionTrainer(pl.LightningModule):
                 predictions /= 2
                 predictions *= (ma1 - mi1)
                 predictions += mi1
+            # predictions *= 1023
         return predictions
-
 
     def training_step(self, training_batch, batch_idx):
         # batch_coordinates, batch_features, batch_targets = training_batch
