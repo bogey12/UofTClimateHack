@@ -85,7 +85,7 @@ if __name__ == '__main__':
     training = datapoints[:train_len].tolist()
     testing = datapoints[train_len:].tolist()
 
-    ch_training = ClimateHackDataset(training_ds, crops_per_slice=5, day_limit=7, outputs=N_IMS, shuffler=False)#, timeskip=8)
+    ch_training = ClimateHackDataset(training_ds, crops_per_slice=5, day_limit=7, outputs=N_IMS)#, timeskip=8)
     ch_training.cached_items = training# + testing
     ch_validation = ClimateHackDataset(validation_ds, crops_per_slice=5, day_limit=3, outputs=N_IMS)#, cache=False)
     ch_validation.cached_items = testing
