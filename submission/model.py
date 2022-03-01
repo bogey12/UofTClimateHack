@@ -171,7 +171,7 @@ class Down(nn.Module):
     def __init__(self, in_channels, out_channels, reduction_ratio=16, separate=True,**args):
         super().__init__()
         DoubleConv = DoubleConvDS if separate else DoubleConvNorm
-        self.maxpool_conv = nn.Sequential(*([nn.Conv2d(in_channels, in_channels, 5, stride=2, padding=2),
+        self.maxpool_conv = nn.Sequential(*([nn.Conv2d(in_channels, in_channels, 7, stride=2, padding=3),
             # nn.MaxPool2d(2),
             DoubleConv(in_channels, out_channels, **args)] + ([CBAM(out_channels, reduction_ratio=reduction_ratio)] if separate else []))
         )
