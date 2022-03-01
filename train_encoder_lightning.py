@@ -17,7 +17,7 @@ from einops import rearrange
 import pickle
 import pytorch_lightning as pl
 from training_utils import *
-from pytorch_lightning.callbacks import EarlyStopping
+from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 import argparse
 
 parser = argparse.ArgumentParser(description='Train skip conn UNet')
@@ -102,9 +102,16 @@ if __name__ == '__main__':
         "in_opt_flow":args['inoptflow'],
         "criterion": args['criterion']
     }
+    checkpoint_callback = ModelCheckpoint(
+        monitor="valid_loss",
+        dirpath="submission/",
+        filename="sample-mnist-{epoch:02d}-{valid_loss:.2f}",
+        save_top_k=3,
+        mode="min",
+    )
     training_model = PredictionTrainer(config, model=Encoder, device=device, convert=False)
     early_stop = EarlyStopping('valid_loss', patience=args['patience'], mode='min')
-    trainer = pl.Trainer(gpus=1, precision=32, max_epochs=args['epochs'], callbacks=[early_stop], accumulate_grad_batches=7)#, detect_anomaly=True)#, overfit_batches=1)#, benchmark=True)#, limit_train_batches=1)
+    trainer = pl.Trainer(gpus=1, precision=32, max_epochs=args['epochs'], callbacks=[early_stop, checkpoint_callback], accumulate_grad_batches=7)#, detect_anomaly=True)#, overfit_batches=1)#, benchmark=True)#, limit_train_batches=1)
     trainer.fit(training_model, training_dl, validation_dl)
     torch.save(trainer.model.state_dict(), 'encoder_generic.pt')
     
