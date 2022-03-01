@@ -23,7 +23,7 @@ from einops import rearrange
 import pickle
 import pytorch_lightning as pl
 from training_utils import *
-from pytorch_lightning.callbacks import EarlyStopping
+from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 import argparse
 
 parser = argparse.ArgumentParser(description='Train skip conn UNet')
@@ -43,6 +43,8 @@ parser.add_argument('--dataset', required=False, type=str, default="ds-total/ds_
 parser.add_argument('--inputs', required=False, type=int, default=12)
 parser.add_argument('--outputs', required=False, type=int, default=24)
 parser.add_argument('--criterion', required=False, type=str, default="msssim")
+parser.add_argument('--weightdecay', required=False,
+                    help='lr', type=float, default=1e-8)
 
 args = vars(parser.parse_args())
 print(args)
@@ -107,12 +109,22 @@ if __name__ == '__main__':
         "output_std": 0,
         "inputs":args['inputs'],
         "outputs":args['outputs'],
-        "dropout": args['dropout']
+        "dropout": args['dropout'],
+        "weight_decay":args['weightdecay']
     }
     
+    checkpoint_callback = ModelCheckpoint(
+        monitor="valid_loss",
+        dirpath="submission/",
+        filename="sample-mnist-{epoch:02d}-{valid_loss:.2f}",
+        save_top_k=3,
+        mode="min",
+    )
+
+
     training_model = PredictionTrainer(config, model=TempModel, device=device, convert=False)
     early_stop = EarlyStopping('valid_loss', patience=args['patience'], mode='min')
-    trainer = pl.Trainer(gpus=1, precision=32, max_epochs=args['epochs'], callbacks=[early_stop], accumulate_grad_batches=7)#, gradient_clip_val=50.0, gradient_clip_algorithm="value")#, detect_anomaly=True)#, overfit_batches=1)#, benchmark=True)#, limit_train_batches=1)
+    trainer = pl.Trainer(gpus=1, precision=32, max_epochs=args['epochs'], callbacks=[early_stop, checkpoint_callback], accumulate_grad_batches=7)#, gradient_clip_val=50.0, gradient_clip_algorithm="value")#, detect_anomaly=True)#, overfit_batches=1)#, benchmark=True)#, limit_train_batches=1)
     trainer.fit(training_model, training_dl, validation_dl)
     torch.save(trainer.model.state_dict(), 'encoder_generic.pt')
     

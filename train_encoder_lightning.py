@@ -47,6 +47,7 @@ parser.add_argument('--inputs', required=False, type=int, default=12)
 parser.add_argument('--outputs', required=False, type=int, default=24)
 parser.add_argument('--inoptflow', required=False, type=int, default=0)
 parser.add_argument('--criterion', required=False, type=str, default="msssim")
+parser.add_argument('--weightdecay', required=False, type=float, default=1e-8)
 args = vars(parser.parse_args())
 print(args)
 
@@ -100,7 +101,8 @@ if __name__ == '__main__':
         "inputs":args['inputs'],
         "outputs":args['outputs'],
         "in_opt_flow":args['inoptflow'],
-        "criterion": args['criterion']
+        "criterion": args['criterion'],
+        "weight_decay":args['weightdecay']
     }
     checkpoint_callback = ModelCheckpoint(
         monitor="valid_loss",

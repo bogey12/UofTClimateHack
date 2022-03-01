@@ -22,8 +22,30 @@ import pickle
 import pytorch_lightning as pl
 from training_utils import *
 import random
-from pytorch_lightning.callbacks import EarlyStopping
+from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 
+import argparse
+parser = argparse.ArgumentParser(description='Train skip conn UNet')
+parser.add_argument('--lr', required=True,
+                    help='lr', type=float)
+parser.add_argument('--dropout', required=False,
+                    help='lr', type=float, default=0.1)
+parser.add_argument('--normalize', required=False,
+                    help='norm', type=str, default="standardize")
+parser.add_argument('--epochs', required=False,
+                    help='epochs', type=int, default=200)
+parser.add_argument('--localnorm', required=False,
+                    help='local norm', type=bool, default=True)
+parser.add_argument('--patience', required=False,
+                    help='patience', type=int, default=20)
+parser.add_argument('--dataset', required=False, type=str, default="ds-total/ds_total.npz")
+parser.add_argument('--inputs', required=False, type=int, default=12)
+parser.add_argument('--outputs', required=False, type=int, default=24)
+parser.add_argument('--criterion', required=False, type=str, default="msssim")
+parser.add_argument('--weightdecay', required=False,
+                    help='lr', type=float, default=1e-8)
+
+args = vars(parser.parse_args())
 
 BATCH_SIZE = 1
 EPOCHS = 1
@@ -55,20 +77,6 @@ if __name__ == '__main__':
     # training_dl.multiprocessing_context = 'spawn'
     # validation_dl.multiprocessing_context = 'spawn'
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    # encoder = [('conv', 'leaky', 1, 64, 3, 1, 2),
-    #          ('convlstm', '', 64, 64, 3, 1, 1),
-    #          ('conv', 'leaky', 64, 64, 3, 1, 2),
-    #          ('convlstm', '', 64, 64, 3, 1, 1),
-    #          ('conv', 'leaky', 64, 128, 3, 1, 2),
-    #          ('convlstm', '', 128, 128, 3, 1, 1)]
-    # decoder = [('deconv', 'leaky', 128, 64, 4, 1, 2),
-    #         ('convlstm', '', 128, 64, 3, 1, 1),
-    #         ('deconv', 'leaky', 64, 64, 4, 1, 2),
-    #         ('convlstm', '', 128, 64, 3, 1, 1),
-    #         ('deconv', 'leaky', 64, 64, 4, 1, 2),
-    #         ('convlstm', '', 65, 64, 3, 1, 1),
-    #         ('conv_output', '', 64, 1, 1, 0, 2)]
-
     encoder = [('conv', 'leaky', 1, 32, 5, 2, 2),
              ('convlstm', '', 32, 32, 3, 1, 1),
              ('conv', 'leaky', 32, 64, 3, 1, 2),
@@ -82,49 +90,35 @@ if __name__ == '__main__':
                ('deconv', 'leaky', 32, 32, 4, 1, 2),
                ('convlstm', '', 33, 32, 3, 1, 1),
                ('conv_output', '', 32, 1, 1, 0, 2)]
-    # encoder = [('conv', 'leaky', 1, 64, 7, 3, 2),
-    #          ('convlstm', '', 64, 64, 7, 3, 1),
-    #          ('conv', 'leaky', 64, 64, 7, 3, 2),
-    #          ('convlstm', '', 64, 64, 7, 3, 1),]
-    # decoder = [('deconv', 'leaky', 64, 64, 8, 3, 2),
-    #             ('convlstm', '', 128, 64, 7, 3, 1),
-    #             ('deconv', 'leaky', 64, 64, 8, 3, 2),
-    #             ('convlstm', '', 65, 64, 7, 3, 1),
-    #             ('conv', 'sigmoid', 64, 1, 1, 0, 2)]
-    # encoder = [('conv', 'leaky', 1, 64, 5, 2, 2),
-    #          ('convlstm', '', 64, 64, 3, 1, 1),
-    #          ('conv', 'leaky', 64, 64, 3, 1, 2),
-    #          ('convlstm', '', 64, 64, 3, 1, 1),]
-    # decoder = [('deconv', 'leaky', 64, 64, 4, 1, 2),
-    #             ('convlstm', '', 128, 64, 3, 1, 1),
-    #             ('deconv', 'leaky', 64, 64, 4, 1, 2),
-    #             ('convlstm', '', 65, 64, 3, 1, 1),
-    #             ('conv', 'relu', 64, 1, 1, 0, 2)]
-    # encoder = [('conv', 'leaky', 1, 128, 7, 3, 2),
-    #          ('convlstm', '', 128, 64, 7, 3, 1),
-    #          ('conv', 'leaky', 64, 64, 7, 3, 2),
-    #          ('convlstm', '', 64, 64, 7, 3, 1),]
-    # decoder = [('deconv', 'leaky', 64, 64, 8, 3, 2),
-    #         ('convlstm', '', 128, 64, 7, 3, 1),
-    #         ('deconv', 'leaky', 64, 64, 8, 3, 2),
-    #         ('convlstm', '', 65, 64, 7, 3, 1),  
-    #         ('conv', 'relu', 64, 1, 1, 0, 1)]
-    # encoder = [('conv', 'leaky', 1, 128, 5, 2, 2),
-    #          ('convlstm', '', 128, 128, 5, 2, 1)]
-    # decoder = [('deconv', 'leaky', 128, 128, 6, 2, 2),
-    #             ('convlstm', '', 129, 128, 5, 2, 1),
-    #             ('conv', 'relu', 128, 1, 1, 0, 2)]
-    # encoder = [('conv', 'leaky', 1, 128, 5, 2, 2),
-    #          ('convlstm', '', 128, 64, 5, 2, 1)]
-    # decoder = [('deconv', 'leaky', 64, 64, 6, 2, 2),
-    #             ('convlstm', '', 65, 64, 5, 2, 1),
-    #             ('conv_output', '', 64, 1, 1, 0, 2)]
-    model = ConvLSTM(encoder, decoder, dropout=0.2)
-    # profiler = PyTorchProfiler()
-    early_stop = EarlyStopping('valid_loss', patience=30, mode='min')
-    training_model = PredictionTrainer(model=model, device=device, convert=True, data_range=1023, channels=12, fac=1023)
-    # training_model.load_state_dict(torch.load('submission/convlstm.pt'))
 
-    trainer = pl.Trainer(gpus=1, precision=32, max_epochs=200, callbacks=[early_stop])#, overfit_batches=1)#, benchmark=True)#, limit_train_batches=1)#, detect_anomaly=True)
+    config = {
+        "lr": args['lr'],
+        "normalize": args['normalize'], 
+        "local_norm": args['localnorm'],
+        "in_opt_flow": False,
+        "opt_flow": False,
+        "criterion": args['criterion'],
+        "output_mean": 0,
+        "output_std": 0,
+        "inputs":args['inputs'],
+        "outputs":args['outputs'],
+        "dropout": args['dropout'],
+        "weight_decay":args['weightdecay'],
+        "encoder": encoder,
+        "decoder": decoder
+    }
+
+    # profiler = PyTorchProfiler()
+    early_stop = EarlyStopping('valid_loss', patience=args['patience'], mode='min')
+    training_model = PredictionTrainer(config, model=ConvLSTM, device=device, convert=True, data_range=1023)
+    # training_model.load_state_dict(torch.load('submission/convlstm.pt'))
+    checkpoint_callback = ModelCheckpoint(
+        monitor="valid_loss",
+        dirpath="submission/",
+        filename="convlstm-{epoch:02d}-{valid_loss:.4f}",
+        save_top_k=3,
+        mode="min",
+    )
+    trainer = pl.Trainer(gpus=1, precision=32, max_epochs=args['epochs'], callbacks=[early_stop, checkpoint_callback], accumulate_grad_batches=7)#, detect_anomaly=True)#, overfit_batches=1)#, benchmark=True)#, limit_train_batches=1)
     trainer.fit(training_model, training_dl, validation_dl)
     torch.save(trainer.model.state_dict(), f'submission/convlstm.pt')

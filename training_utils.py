@@ -42,8 +42,9 @@ class PredictionTrainer(pl.LightningModule):
         return self.model(x, **self.args)
 
     def configure_optimizers(self):
-        optimizer = optim.Adam(self.parameters(), lr=self.config['lr'])#, weight_decay=1e-8)
-        lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=10, verbose=True, factor=0.7)
+        decay = 0 if 'weight_decay' not in self.config else self.config['weight_decay']
+        optimizer = optim.Adam(self.parameters(), lr=self.config['lr'], weight_decay=decay)
+        lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, verbose=True, factor=0.7)
         return {'optimizer': optimizer, 'lr_scheduler': lr_scheduler, 'monitor':'valid_loss'}
         # return optimizer
 
