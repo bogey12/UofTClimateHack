@@ -119,6 +119,7 @@ if __name__ == '__main__':
         filename="sample-mnist-{epoch:02d}-{valid_loss:.2f}",
         save_top_k=3,
         mode="min",
+        save_as_state_dict=True
     )
 
 
