@@ -45,7 +45,7 @@ parser.add_argument('--outputs', required=False, type=int, default=24)
 parser.add_argument('--criterion', required=False, type=str, default="msssim")
 parser.add_argument('--weightdecay', required=False,
                     help='lr', type=float, default=1e-8)
-parser.add_argument('--innersize', required=False, type=str, default="192 64")
+parser.add_argument('--innersize', required=False, type=str, default="64 192")
 
 args = vars(parser.parse_args())
 print(args)
