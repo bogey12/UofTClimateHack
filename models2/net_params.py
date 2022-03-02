@@ -153,6 +153,7 @@ convlstm_encoder_params1 = [
     ]
 ]
 
+
 convlstm_forecaster_params1 = [
     [
         OrderedDict({'deconv1_leaky_1': [64, 64, 4, STRIDES[2], 1]}),
@@ -173,3 +174,44 @@ convlstm_forecaster_params1 = [
                  kernel_size=3, stride=1, padding=1),
     ]
 ]
+
+def return_params(inner_size):
+    convlstm_encoder_params1 = [
+        [
+            OrderedDict({'conv1_leaky_1': [1, 8, 7, STRIDES[0], 3]}),
+            OrderedDict({'conv2_leaky_1': [inner_size//2, inner_size, 5, STRIDES[1], 2]}),
+            OrderedDict({'conv3_leaky_1': [inner_size, inner_size, 3, STRIDES[2], 1]}),
+        ],
+
+        [
+            ConvLSTM(input_channel=8, num_filter=inner_size//2, b_h_w=(batch_size, HEIGHT//STRIDES_TOTAL[0], HEIGHT//STRIDES_TOTAL[0]),
+                    kernel_size=3, stride=1, padding=1),
+            ConvLSTM(input_channel=inner_size, num_filter=inner_size, b_h_w=(batch_size, HEIGHT//STRIDES_TOTAL[1], HEIGHT//STRIDES_TOTAL[1]),
+                    kernel_size=3, stride=1, padding=1),
+            ConvLSTM(input_channel=inner_size, num_filter=inner_size, b_h_w=(batch_size, HEIGHT//STRIDES_TOTAL[2], HEIGHT//STRIDES_TOTAL[2]),
+                    kernel_size=3, stride=1, padding=1),
+        ]
+    ]
+
+
+    convlstm_forecaster_params1 = [
+        [
+            OrderedDict({'deconv1_leaky_1': [inner_size, inner_size, 4, STRIDES[2], 1]}),
+            OrderedDict({'deconv2_leaky_1': [inner_size, inner_size//2, 6, STRIDES[1], 2]}),
+            OrderedDict({
+                'deconv3_leaky_1': [inner_size//2, 8, 8, STRIDES[0], 3],
+                'conv3_leaky_2': [8, 8, 3, 2, 1],
+                'conv3_3': [8, 1, 1, 1, 0]
+            }),
+        ],
+
+        [
+            ConvLSTM(input_channel=inner_size, num_filter=inner_size, b_h_w=(batch_size, HEIGHT//STRIDES_TOTAL[2], HEIGHT//STRIDES_TOTAL[2]),
+                    kernel_size=3, stride=1, padding=1),
+            ConvLSTM(input_channel=inner_size, num_filter=inner_size, b_h_w=(batch_size, HEIGHT//STRIDES_TOTAL[1], HEIGHT//STRIDES_TOTAL[1]),
+                    kernel_size=3, stride=1, padding=1),
+            ConvLSTM(input_channel=inner_size//2, num_filter=inner_size//2, b_h_w=(batch_size, HEIGHT//STRIDES_TOTAL[0], HEIGHT//STRIDES_TOTAL[0]),
+                    kernel_size=3, stride=1, padding=1),
+        ]
+    ]
+    return convlstm_encoder_params1, convlstm_forecaster_params1

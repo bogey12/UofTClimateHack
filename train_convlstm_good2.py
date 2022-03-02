@@ -16,7 +16,7 @@ from models2.forecaster import Forecaster
 from models2.encoder import Encoder as Encoder2
 from models2.model import EF
 from models2.loss import Weighted_mse_mae
-from models2.net_params import convlstm_encoder_params1, convlstm_forecaster_params1
+from models2.net_params import return_params
 from models2.config import cfg
 from pytorch_msssim import MS_SSIM
 from einops import rearrange
@@ -45,6 +45,7 @@ parser.add_argument('--outputs', required=False, type=int, default=24)
 parser.add_argument('--criterion', required=False, type=str, default="msssim")
 parser.add_argument('--weightdecay', required=False,
                     help='lr', type=float, default=1e-8)
+parser.add_argument('--innersize', required=False, type=int, default=128)
 
 args = vars(parser.parse_args())
 print(args)
@@ -52,6 +53,7 @@ print(args)
 class TempModel(nn.Module):
     def __init__(self, config) -> None:
         super().__init__()
+        convlstm_encoder_params1, convlstm_forecaster_params1 = return_params(config['inner_size'])
         self.encoder = Encoder2(convlstm_encoder_params1[0], convlstm_encoder_params1[1])
         self.forecaster = Forecaster(convlstm_forecaster_params1[0], convlstm_forecaster_params1[1])
         self.ef = EF(self.encoder, self.forecaster)
@@ -110,7 +112,8 @@ if __name__ == '__main__':
         "inputs":args['inputs'],
         "outputs":args['outputs'],
         "dropout": args['dropout'],
-        "weight_decay":args['weightdecay']
+        "weight_decay":args['weightdecay'],
+        "inner_size":args['innersize']
     }
     
     checkpoint_callback = ModelCheckpoint(
