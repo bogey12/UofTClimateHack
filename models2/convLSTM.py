@@ -22,9 +22,9 @@ class ConvLSTM(nn.Module):
         # self.Wci = nn.Parameter(torch.zeros(1, num_filter, self._state_height, self._state_width), requires_grad=True).to(cfg.GLOBAL.DEVICE)
         # self.Wcf = nn.Parameter(torch.zeros(1, num_filter, self._state_height, self._state_width), requires_grad=True).to(cfg.GLOBAL.DEVICE)
         # self.Wco = nn.Parameter(torch.zeros(1, num_filter, self._state_height, self._state_width), requires_grad=True).to(cfg.GLOBAL.DEVICE)
-        self.register_parameter(name='Wci', param=nn.Parameter(torch.zeros(1, num_filter, self._state_height, self._state_width)).to(cfg.GLOBAL.DEVICE))
-        self.register_parameter(name='Wcf', param=nn.Parameter(torch.zeros(1, num_filter, self._state_height, self._state_width)).to(cfg.GLOBAL.DEVICE))
-        self.register_parameter(name='Wco', param=nn.Parameter(torch.zeros(1, num_filter, self._state_height, self._state_width)).to(cfg.GLOBAL.DEVICE))
+        self.register_parameter(name='Wci', param=nn.Parameter(torch.zeros(1, num_filter, self._state_height, self._state_width)))
+        self.register_parameter(name='Wcf', param=nn.Parameter(torch.zeros(1, num_filter, self._state_height, self._state_width)))
+        self.register_parameter(name='Wco', param=nn.Parameter(torch.zeros(1, num_filter, self._state_height, self._state_width)))
         self._input_channel = input_channel
         self._num_filter = num_filter
 
