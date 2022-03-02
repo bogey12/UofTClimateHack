@@ -1,5 +1,6 @@
 import sys
-sys.path.insert(1, 'C:\\Users\\HECAI\\Documents\\Personal\\ClimateAI\\grid_climate\\models2')
+# sys.path.insert(1, 'C:\\Users\\HECAI\\Documents\\Personal\\ClimateAI\\grid_climate\\models2')
+sys.path.insert(1, './models2')
 from config import cfg
 import torch
 from forecaster import Forecaster
@@ -31,8 +32,8 @@ STRIDES_TOTAL = list(accumulate(STRIDES, lambda a, b: a*b))
 # build model
 encoder_params = [
     [
-        OrderedDict({'conv1_leaky_1': [1, 8, 7, STRIDES[0], 1]}),
-        OrderedDict({'conv2_leaky_1': [64, 192, 5, STRIDES[1], 1]}),
+        OrderedDict({'conv1_leaky_1': [1, 8, 7, STRIDES[0], 3]}),
+        OrderedDict({'conv2_leaky_1': [64, 192, 5, STRIDES[1], 2]}),
         OrderedDict({'conv3_leaky_1': [192, 192, 3, STRIDES[2], 1]}),
     ],
 
@@ -56,9 +57,9 @@ encoder_params = [
 forecaster_params = [
     [
         OrderedDict({'deconv1_leaky_1': [192, 192, 4, STRIDES[2], 1]}),
-        OrderedDict({'deconv2_leaky_1': [192, 64, 5, STRIDES[1], 1]}),
+        OrderedDict({'deconv2_leaky_1': [192, 64, 6, STRIDES[1], 2]}),
         OrderedDict({
-            'deconv3_leaky_1': [64, 8, 7, STRIDES[0], 1],
+            'deconv3_leaky_1': [64, 8, 8, STRIDES[0], 3],
             'conv3_leaky_2': [8, 8, 3, 1, 1],
             'conv3_3': [8, 1, 1, 1, 0]
         }),
@@ -130,6 +131,45 @@ convlstm_forecaster_params = [
         ConvLSTM(input_channel=192, num_filter=192, b_h_w=(batch_size, HEIGHT//STRIDES_TOTAL[1], HEIGHT//STRIDES_TOTAL[1]),
                  kernel_size=3, stride=1, padding=1),
         ConvLSTM(input_channel=64, num_filter=64, b_h_w=(batch_size, HEIGHT//STRIDES_TOTAL[0], HEIGHT//STRIDES_TOTAL[0]),
+                 kernel_size=3, stride=1, padding=1),
+    ]
+]
+
+
+convlstm_encoder_params1 = [
+    [
+        OrderedDict({'conv1_leaky_1': [1, 8, 7, STRIDES[0], 3]}),
+        OrderedDict({'conv2_leaky_1': [32, 64, 5, STRIDES[1], 2]}),
+        OrderedDict({'conv3_leaky_1': [64, 64, 3, STRIDES[2], 1]}),
+    ],
+
+    [
+        ConvLSTM(input_channel=8, num_filter=32, b_h_w=(batch_size, HEIGHT//STRIDES_TOTAL[0], HEIGHT//STRIDES_TOTAL[0]),
+                 kernel_size=3, stride=1, padding=1),
+        ConvLSTM(input_channel=64, num_filter=64, b_h_w=(batch_size, HEIGHT//STRIDES_TOTAL[1], HEIGHT//STRIDES_TOTAL[1]),
+                 kernel_size=3, stride=1, padding=1),
+        ConvLSTM(input_channel=64, num_filter=64, b_h_w=(batch_size, HEIGHT//STRIDES_TOTAL[2], HEIGHT//STRIDES_TOTAL[2]),
+                 kernel_size=3, stride=1, padding=1),
+    ]
+]
+
+convlstm_forecaster_params1 = [
+    [
+        OrderedDict({'deconv1_leaky_1': [64, 64, 4, STRIDES[2], 1]}),
+        OrderedDict({'deconv2_leaky_1': [64, 32, 6, STRIDES[1], 2]}),
+        OrderedDict({
+            'deconv3_leaky_1': [32, 8, 8, STRIDES[0], 3],
+            'conv3_leaky_2': [8, 8, 3, 2, 1],
+            'conv3_3': [8, 1, 1, 1, 0]
+        }),
+    ],
+
+    [
+        ConvLSTM(input_channel=64, num_filter=64, b_h_w=(batch_size, HEIGHT//STRIDES_TOTAL[2], HEIGHT//STRIDES_TOTAL[2]),
+                 kernel_size=3, stride=1, padding=1),
+        ConvLSTM(input_channel=64, num_filter=64, b_h_w=(batch_size, HEIGHT//STRIDES_TOTAL[1], HEIGHT//STRIDES_TOTAL[1]),
+                 kernel_size=3, stride=1, padding=1),
+        ConvLSTM(input_channel=32, num_filter=32, b_h_w=(batch_size, HEIGHT//STRIDES_TOTAL[0], HEIGHT//STRIDES_TOTAL[0]),
                  kernel_size=3, stride=1, padding=1),
     ]
 ]
