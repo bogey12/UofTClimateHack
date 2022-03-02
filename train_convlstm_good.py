@@ -70,34 +70,6 @@ SATELLITE_ZARR_PATH = "gs://public-datasets-eumetsat-solar-forecasting/satellite
 N_IMS = 24
 
 if __name__ == '__main__':
-    dataset = xr.open_dataset(
-        SATELLITE_ZARR_PATH, 
-        engine="zarr",
-        chunks="auto",  # Load the data as a Dask array
-    )
-    # print(separate_tup)
-    training_ds = dataset.sel(time=slice("2020-07-01 09:00", "2020-10-01 09:00"))
-    validation_ds = dataset.sel(time=slice("2020-12-01 09:00", "2020-12-10 09:00"))
-    datapoints = np.load(f'/datastores/{args["dataset"]}', allow_pickle=True)['datapoints']#.to_list()
-    # datapoints = np.load('/datastores/data2/data. npz', allow_pickle=True)['data']#.to_list()
-    np.random.shuffle(datapoints)
-    tot_points = len(datapoints)
-    train_len = int(tot_points*0.8)
-    datapoints = datapoints.reshape((tot_points, 2))
-    training = datapoints[:train_len].tolist()
-    testing = datapoints[train_len:].tolist()
-
-    ch_training = ClimateHackDataset(training_ds, crops_per_slice=5, day_limit=7, outputs=N_IMS)#, timeskip=8)
-    ch_training.cached_items = training# + testing
-    ch_validation = ClimateHackDataset(validation_ds, crops_per_slice=5, day_limit=3, outputs=N_IMS)#, cache=False)
-    ch_validation.cached_items = testing
-    # training_dl, validation_dl = [DataLoader(ds, batch_size=BATCH_SIZE, num_workers=1, persistent_workers=True, pin_memory=True) for ds in [ch_training, ch_validation]]
-    training_dl, validation_dl = [DataLoader(ds, batch_size=BATCH_SIZE, num_workers=0, pin_memory=True) for ds in [ch_training, ch_validation]]
-    # ch_dataloader = DataLoader(ch_dataset, batch_size=BATCH_SIZE, num_workers=4, persistent_workers=True)
-    # training_dl.multiprocessing_context = 'spawn'   
-    # validation_dl.multiprocessing_context = 'spawn'
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    
     config = {
         "lr": args['lr'],
         "normalize": args['normalize'], 
@@ -110,22 +82,10 @@ if __name__ == '__main__':
         "inputs":args['inputs'],
         "outputs":args['outputs'],
         "dropout": args['dropout'],
-        "weight_decay":args['weightdecay']
+        "weight_decay":args['weightdecay'],
+        "epochs": args['epochs'],
+        "dataset": args['dataset'],
+        "patience": args['patience']
     }
-    
-    checkpoint_callback = ModelCheckpoint(
-        monitor="valid_loss",
-        dirpath="submission/",
-        filename="sample-mnist-{epoch:02d}-{valid_loss:.2f}",
-        save_top_k=3,
-        mode="min",
-        save_weights_only=True
-    )
-
-
-    training_model = PredictionTrainer(config, model=TempModel, device=device, convert=False)
-    early_stop = EarlyStopping('valid_loss', patience=args['patience'], mode='min')
-    trainer = pl.Trainer(gpus=1, precision=32, max_epochs=args['epochs'], callbacks=[early_stop, checkpoint_callback], accumulate_grad_batches=7)#, gradient_clip_val=50.0, gradient_clip_algorithm="value")#, detect_anomaly=True)#, overfit_batches=1)#, benchmark=True)#, limit_train_batches=1)
-    trainer.fit(training_model, training_dl, validation_dl)
-    torch.save(trainer.model.state_dict(), 'encoder_generic.pt')
+    train_model(config, TempModel, 'convlstm-1')
     

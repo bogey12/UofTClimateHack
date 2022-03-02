@@ -21,7 +21,12 @@ import pickle
 import pytorch_lightning as pl
 import torchvision
 from models2.loss import Weighted_mse_mae
+from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 
+
+
+BATCH_SIZE = 1
+SATELLITE_ZARR_PATH = "gs://public-datasets-eumetsat-solar-forecasting/satellite/EUMETSAT/SEVIRI_RSS/v3/eumetsat_seviri_hrv_uk.zarr"
 
 class PredictionTrainer(pl.LightningModule):
     def __init__(self, config, model=None, device=torch.device('cpu'), convert=False, data_range=1023, **args):
@@ -149,3 +154,44 @@ class PredictionTrainer(pl.LightningModule):
     #     avg_loss = torch.stack([x["valid_loss"] for x in outputs]).mean()
     #     self.log("ptl/val_loss", avg_loss)
 
+def train_model(config, model_class, name):
+    #add dataset to config  
+    #add epochs to config  
+    #add name to config
+    #add patience to config
+    dataset = xr.open_dataset(
+        SATELLITE_ZARR_PATH, 
+        engine="zarr",
+        chunks="auto",  # Load the data as a Dask array
+    )
+    # print(separate_tup)
+    training_ds = dataset.sel(time=slice("2020-07-01 09:00", "2020-10-01 09:00"))
+    validation_ds = dataset.sel(time=slice("2020-12-01 09:00", "2020-12-10 09:00"))
+    datapoints = np.load(f'/datastores/{config["dataset"]}', allow_pickle=True)['datapoints']#.to_list()
+    # datapoints = np.load('/datastores/data2/data.npz', allow_pickle=True)['data']#.to_list()
+    np.random.shuffle(datapoints)
+    tot_points = len(datapoints)
+    train_len = int(tot_points*0.8)
+    datapoints = datapoints.reshape((tot_points, 2))
+    training = datapoints[:train_len].tolist()
+    testing = datapoints[train_len:].tolist()
+
+    ch_training = ClimateHackDataset(training_ds, crops_per_slice=5, day_limit=7, outputs=config['outputs'])#, timeskip=8)
+    ch_training.cached_items = training# + testing
+    ch_validation = ClimateHackDataset(validation_ds, crops_per_slice=5, day_limit=3, outputs=config['outputs'])#, cache=False)
+    ch_validation.cached_items = testing
+    training_dl, validation_dl = [DataLoader(ds, batch_size=BATCH_SIZE, num_workers=0, pin_memory=True) for ds in [ch_training, ch_validation]]
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    checkpoint_callback = ModelCheckpoint(
+        monitor="valid_loss",
+        dirpath="submission/",
+        filename= name + "-{epoch:02d}-{valid_loss:.2f}",
+        save_top_k=3,
+        mode="min",
+        save_weights_only=True
+    )
+    training_model = PredictionTrainer(config, model=model_class, device=device, convert=False)
+    early_stop = EarlyStopping('valid_loss', patience=config['patience'], mode='min')
+    trainer = pl.Trainer(gpus=1, precision=32, max_epochs=config['epochs'], callbacks=[early_stop, checkpoint_callback], accumulate_grad_batches=7, gradient_clip_val=50.0)#, detect_anomaly=True)#, overfit_batches=1)#, benchmark=True)#, limit_train_batches=1)
+    trainer.fit(training_model, training_dl, validation_dl)
+    torch.save(trainer.model.state_dict(), f'{name}.pt')
