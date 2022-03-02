@@ -89,7 +89,7 @@ if __name__ == '__main__':
                ('convlstm', '', 64, 32, 3, 1, 1),
                ('deconv', 'leaky', 32, 32, 4, 1, 2),
                ('convlstm', '', 33, 32, 3, 1, 1),
-               ('conv_output', '', 32, 1, 1, 0, 2)]
+               ('convoutput', '', 32, 1, 1, 0, 2)]
 
     config = {
         "lr": args['lr'],
