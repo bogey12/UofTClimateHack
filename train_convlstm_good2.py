@@ -45,7 +45,7 @@ parser.add_argument('--outputs', required=False, type=int, default=24)
 parser.add_argument('--criterion', required=False, type=str, default="msssim")
 parser.add_argument('--weightdecay', required=False,
                     help='lr', type=float, default=1e-8)
-parser.add_argument('--innersize', required=False, type=int, default=128)
+parser.add_argument('--innersize', required=False, type=str, default="192 64")
 
 args = vars(parser.parse_args())
 print(args)
@@ -99,7 +99,7 @@ if __name__ == '__main__':
     # training_dl.multiprocessing_context = 'spawn'   
     # validation_dl.multiprocessing_context = 'spawn'
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    
+    innertup = list(map(int, args['innersize'].split()))
     config = {
         "lr": args['lr'],
         "normalize": args['normalize'], 
@@ -113,7 +113,7 @@ if __name__ == '__main__':
         "outputs":args['outputs'],
         "dropout": args['dropout'],
         "weight_decay":args['weightdecay'],
-        "inner_size":args['innersize']
+        "inner_size":innertup
     }
     
     checkpoint_callback = ModelCheckpoint(
@@ -122,9 +122,8 @@ if __name__ == '__main__':
         filename="sample-mnist-{epoch:02d}-{valid_loss:.2f}",
         save_top_k=3,
         mode="min",
-        save_as_state_dict=True
+        save_weights_only=True
     )
-
 
     training_model = PredictionTrainer(config, model=TempModel, device=device, convert=False)
     early_stop = EarlyStopping('valid_loss', patience=args['patience'], mode='min')

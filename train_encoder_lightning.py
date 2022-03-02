@@ -110,7 +110,7 @@ if __name__ == '__main__':
         filename="sample-mnist-{epoch:02d}-{valid_loss:.2f}",
         save_top_k=3,
         mode="min",
-        save_as_state_dict=True
+        save_weights_only=True
     )
     training_model = PredictionTrainer(config, model=Encoder, device=device, convert=False)
     early_stop = EarlyStopping('valid_loss', patience=args['patience'], mode='min')
