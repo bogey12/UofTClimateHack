@@ -171,7 +171,7 @@ class Down(nn.Module):
     def __init__(self, in_channels, out_channels, reduction_ratio=16, separate=True,**args):
         super().__init__()
         DoubleConv = DoubleConvDS if separate else DoubleConvNorm
-        self.maxpool_conv = nn.Sequential(*([nn.Conv2d(in_channels, in_channels, 7, stride=2, padding=3),
+        self.maxpool_conv = nn.Sequential(*([nn.Conv2d(in_channels, in_channels, 5, stride=2, padding=2),
             # nn.MaxPool2d(2),
             DoubleConv(in_channels, out_channels, **args)] + ([CBAM(out_channels, reduction_ratio=reduction_ratio)] if separate else []))
         )
@@ -366,8 +366,9 @@ class Encoder(nn.Module):
         DoubleConv = DoubleConvDS if config['separate'][1] else DoubleConvNorm
         self.input = DoubleConv(inputs, SIZE)
         n_layers = config['n_layers']
-        self.encoder = nn.ModuleList([Down(SIZE, SIZE*2, separate=config['separate'][1]), Down(SIZE*2, SIZE*4, separate=config['separate'][1])] + [SameNoMerge(SIZE*4, SIZE*4, separate=config['separate'][1]) for _ in range(n_layers)])
-        self.decoder = nn.ModuleList([SameMerge(SIZE*8, SIZE*4, separate=config['separate'][1]) for _ in range(n_layers-1)] + ([SameMerge(SIZE*8, SIZE*2, separate=config['separate'][1])] if n_layers != 0 else []) + [Up(SIZE*4, SIZE, separate=config['separate'][1]), Same(SIZE*2, SIZE, separate=config['separate'][1])])
+        separate = config['separate'][-1]
+        self.encoder = nn.ModuleList([Down(config['separate'][0], config['separate'][1], separate=separate), Down(config['separate'][1], config['separate'][2], separate=separate)] + [SameNoMerge(config['separate'][2], config['separate'][2], separate=separate) for _ in range(n_layers)])
+        self.decoder = nn.ModuleList([SameMerge(config['separate'][2]*2, config['separate'][2], separate=separate) for _ in range(n_layers-1)] + ([SameMerge(config['separate'][2]*2, config['separate'][1], separate=separate)] if n_layers != 0 else []) + [Up(config['separate'][1]*2, config['separate'][0], separate=separate), Same(config['separate'][0]*2, config['separate'][0], separate=separate)])
         # self.decoder = nn.ModuleList([Up(SIZE*2**i, SIZE*2**(i - 2), separate=config['separate'][1]) for i in range(n_layers, 1, -1)] + [Same(SIZE*2, SIZE, separate=config['separate'][1])])
         if sigmoid:
             self.output = nn.Sequential(
@@ -519,11 +520,12 @@ class ConvLSTMCell(nn.Module):
                 torch.zeros(batch_size, self.hidden_dim, height, width, device=self.conv.weight.device))
 
 class ConvLSTMBlock(nn.Module):
-    def __init__(self, in_channels, num_features, kernel_size=3, padding=1, stride=1):
+    def __init__(self, in_channels, num_features, kernel_size=3, padding=1, stride=1, seq_len=None):
         super().__init__()
         self.num_features = num_features
         self.conv = self._make_layer(in_channels+num_features, num_features*4,
                                        kernel_size, padding, stride)
+        self.seq_len = seq_len
 
     def _make_layer(self, in_channels, out_channels, kernel_size, padding, stride):
         return nn.Sequential(
@@ -534,7 +536,6 @@ class ConvLSTMBlock(nn.Module):
 
     def forward(self, inputs):
         '''
-
         :param inputs: (B, S, C, H, W)
         :param hidden_state: (hx: (B, S, C, H, W), cx: (B, S, C, H, W))
         :return:
@@ -543,7 +544,8 @@ class ConvLSTMBlock(nn.Module):
         B, S, C, H, W = inputs.shape
         hx = torch.zeros(B, self.num_features, H, W).to(inputs.device)
         cx = torch.zeros(B, self.num_features, H, W).to(inputs.device)
-        for t in range(S):
+        seq_len = self.seq_len or S
+        for t in range(seq_len):
             combined = torch.cat([inputs[:, t], # (B, C, H, W)
                                   hx], dim=1)
             gates = self.conv(combined)
@@ -602,10 +604,11 @@ class Encoder1(nn.Module):
         return outputs
 
 class Decoder1(nn.Module):
-    def __init__(self, decoder, dropout=0.1):
+    def __init__(self, decoder, dropout=0.1, outputs=None):
         super().__init__()
         self.layers = []
         self.dropout = dropout
+        self.outputs = outputs
         for idx, params in enumerate(decoder):
             setattr(self, params[0]+'_'+str(idx), self._make_layer(*params))
             self.layers.append(params[0]+'_'+str(idx))
@@ -625,7 +628,7 @@ class Decoder1(nn.Module):
             if activation == 'leaky': layers.append(nn.LeakyReLU(inplace=True))
             elif activation == 'relu': layers.append(nn.ReLU(inplace=True))
         elif type == 'convlstm':
-            layers.append(ConvLSTMBlock(in_ch, out_ch, kernel_size=kernel_size, padding=padding, stride=stride))
+            layers.append(ConvLSTMBlock(in_ch, out_ch, kernel_size=kernel_size, padding=padding, stride=stride, seq_len=self.outputs))
         elif type == 'deconv':
             layers.append(nn.ConvTranspose2d(in_ch, out_ch, kernel_size=kernel_size, padding=padding, stride=stride, bias=False))
             # layers.append(nn.BatchNorm2d(out_ch))
@@ -665,7 +668,7 @@ class ConvLSTM(nn.Module):
         super().__init__()
         # self.dropout = nn.Dropout(p=0.1)
         self.encoder = Encoder1(config['encoder'], dropout=config['dropout'])
-        self.decoder = Decoder1(config['decoder'], dropout=config['dropout'])
+        self.decoder = Decoder1(config['decoder'], dropout=config['dropout'], outputs=config['outputs'])
 
     def forward(self, x, fac=1023):
         x -= MEAN
