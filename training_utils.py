@@ -27,7 +27,7 @@ from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 
 BATCH_SIZE = 1
 SATELLITE_ZARR_PATH = "gs://public-datasets-eumetsat-solar-forecasting/satellite/EUMETSAT/SEVIRI_RSS/v3/eumetsat_seviri_hrv_uk.zarr"
-
+VALIDATION_SIZE = 200
 class PredictionTrainer(pl.LightningModule):
     def __init__(self, config, model=None, device=torch.device('cpu'), convert=False, data_range=1023, **args):
         super().__init__()
@@ -171,7 +171,7 @@ def train_model(config, model_class, name):
     # datapoints = np.load('/datastores/data2/data.npz', allow_pickle=True)['data']#.to_list()
     np.random.shuffle(datapoints)
     tot_points = len(datapoints)
-    train_len = int(tot_points*0.8)
+    train_len = int(tot_points - VALIDATION_SIZE) 
     datapoints = datapoints.reshape((tot_points, 2))
     training = datapoints[:train_len].tolist()
     testing = datapoints[train_len:].tolist()
