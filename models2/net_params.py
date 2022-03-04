@@ -199,7 +199,7 @@ def return_params(inner_size):
             OrderedDict({'deconv1_leaky_1': [inner_size[2], inner_size[2], 4, STRIDES[2], 1]}),
             OrderedDict({'deconv2_leaky_1': [inner_size[2], inner_size[1], 6, STRIDES[1], 2]}),
             OrderedDict({
-                'deconv3_leaky_1': [inner_size[1], inner_size[0], inner_size[0], STRIDES[0], 3],
+                'deconv3_leaky_1': [inner_size[1], inner_size[0], 8, STRIDES[0], 3],
                 'conv3_leaky_2': [inner_size[0], inner_size[0], 3, 2, 1],
                 'conv3_3': [inner_size[0], 1, 1, 1, 0]
             }),
