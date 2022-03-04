@@ -21,8 +21,6 @@ from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
 import argparse
 import wandb
-wandb.init(project="ClimateHack", entity="loluwot")
-wandb_logger = WandbLogger(project="ClimateHack")
 
 parser = argparse.ArgumentParser(description='Train skip conn UNet')
 parser.add_argument('--separate', required=True,
@@ -86,5 +84,5 @@ if __name__ == '__main__':
         "dataset": args['dataset'],
         "patience": args['patience']
     }
-    train_model(config, Encoder, 'conv3d', logger=wandb_logger)
+    train_model(config, Encoder, 'conv3d')
     
