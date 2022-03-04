@@ -1,0 +1,8 @@
+compute:
+  train:
+    dependency_file_info:
+      package_manager: pip
+      path: ./requirements.txt
+    actions:
+      on_build_start:
+        - wandb login c68dc2760a0b81a24d35f29820f7c90ebd2735e9

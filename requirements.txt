@@ -7,3 +7,4 @@ dask
 einops
 pytorch-msssim
 tqdm
+wandb

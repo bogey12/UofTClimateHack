@@ -153,7 +153,7 @@ class PredictionTrainer(pl.LightningModule):
     #     avg_loss = torch.stack([x["valid_loss"] for x in outputs]).mean()
     #     self.log("ptl/val_loss", avg_loss)
 
-def train_model(config, model_class, name):
+def train_model(config, model_class, name, **args):
     #add dataset to config  
     #add epochs to config  
     #add name to config
@@ -193,6 +193,6 @@ def train_model(config, model_class, name):
     )
     training_model = PredictionTrainer(config, model=model_class, device=device, convert=False)
     early_stop = EarlyStopping('valid_loss', patience=config['patience'], mode='min')
-    trainer = pl.Trainer(gpus=1, precision=32, max_epochs=config['epochs'], callbacks=[early_stop, checkpoint_callback], accumulate_grad_batches=7, gradient_clip_val=50.0)#, detect_anomaly=True)#, overfit_batches=1)#, benchmark=True)#, limit_train_batches=1)
+    trainer = pl.Trainer(gpus=1, precision=32, max_epochs=config['epochs'], callbacks=[early_stop, checkpoint_callback], accumulate_grad_batches=7, gradient_clip_val=50.0, **args)#, detect_anomaly=True)#, overfit_batches=1)#, benchmark=True)#, limit_train_batches=1)
     trainer.fit(training_model, training_dl, validation_dl)
     torch.save(trainer.model.state_dict(), f'{name}.pt')
