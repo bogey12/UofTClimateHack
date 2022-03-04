@@ -39,7 +39,7 @@ parser.add_argument('--localnorm', required=False,
                     help='local norm', type=bool, default=True)
 parser.add_argument('--patience', required=False,
                     help='patience', type=int, default=20)
-parser.add_argument('--dataset', required=False, type=str, default="ds-total/ds_total.npz")
+parser.add_argument('--dataset', required=False, type=str, default="/datastores/ds-total/ds_total.npz")
 parser.add_argument('--inputs', required=False, type=int, default=12)
 parser.add_argument('--outputs', required=False, type=int, default=24)
 parser.add_argument('--criterion', required=False, type=str, default="msssim")

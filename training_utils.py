@@ -167,7 +167,7 @@ def train_model(config, model_class, name, **args):
     # print(separate_tup)
     training_ds = dataset.sel(time=slice("2020-07-01 09:00", "2020-10-01 09:00"))
     validation_ds = dataset.sel(time=slice("2020-12-01 09:00", "2020-12-10 09:00"))
-    datapoints = np.load(f'/datastores/{config["dataset"]}', allow_pickle=True)['datapoints']#.to_list()
+    datapoints = np.load(f'{config["dataset"]}', allow_pickle=True)['datapoints']#.to_list()
     valid_datapoints = np.load(f'{"valid_set.npz" if "validation" not in config else config["validation"]}', allow_pickle=True)['datapoints']#.to_list()
     np.random.shuffle(datapoints)
     tot_points = len(datapoints) 
