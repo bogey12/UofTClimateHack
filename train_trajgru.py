@@ -56,13 +56,14 @@ class TempModel(nn.Module):
         encoder_params1, forecaster_params1 = return_params_trajgru(config['inner_size'])
         self.encoder = Encoder2(encoder_params1[0], encoder_params1[1])
         self.forecaster = Forecaster(forecaster_params1[0], forecaster_params1[1])
-        self.ef = EF(self.encoder, self.forecaster)
+        # self.ef = EF(self.encoder, self.forecaster)
         self.dropout = nn.Dropout(config['dropout'])
 
     def forward(self, features):
         x = rearrange(features, 'b (c t) h w -> t b c h w', c=1)
         x = self.dropout(x)
-        x = self.ef(x)
+        x = self.encoder(x)
+        x = self.forecaster(x)
         x = rearrange(x, 't b c h w -> b (t c) h w')
         return x
 

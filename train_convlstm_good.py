@@ -52,15 +52,16 @@ print(args)
 class TempModel(nn.Module):
     def __init__(self, config) -> None:
         super().__init__()
-        encoder = Encoder2(convlstm_encoder_params[0], convlstm_encoder_params[1])
-        forecaster = Forecaster(convlstm_forecaster_params[0], convlstm_forecaster_params[1])
-        self.ef = EF(encoder, forecaster)
+        self.encoder = Encoder2(convlstm_encoder_params[0], convlstm_encoder_params[1])
+        self.forecaster = Forecaster(convlstm_forecaster_params[0], convlstm_forecaster_params[1])
+        # self.ef = EF(encoder, forecaster)
         self.dropout = nn.Dropout(config['dropout'])
 
     def forward(self, features):
         x = rearrange(features, 'b (c t) h w -> t b c h w', c=1)
         x = self.dropout(x)
-        x = self.ef(x)
+        x = self.encoder(x)
+        x = self.forecaster(x)
         x = rearrange(x, 't b c h w -> b (t c) h w')
         return x
 
