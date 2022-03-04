@@ -22,12 +22,11 @@ import pytorch_lightning as pl
 import torchvision
 from models2.loss import Weighted_mse_mae
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
-
+from collections import defaultdict
 
 
 BATCH_SIZE = 1
 SATELLITE_ZARR_PATH = "gs://public-datasets-eumetsat-solar-forecasting/satellite/EUMETSAT/SEVIRI_RSS/v3/eumetsat_seviri_hrv_uk.zarr"
-VALIDATION_SIZE = 200
 class PredictionTrainer(pl.LightningModule):
     def __init__(self, config, model=None, device=torch.device('cpu'), convert=False, data_range=1023, **args):
         super().__init__()
@@ -159,6 +158,7 @@ def train_model(config, model_class, name):
     #add epochs to config  
     #add name to config
     #add patience to config
+
     dataset = xr.open_dataset(
         SATELLITE_ZARR_PATH, 
         engine="zarr",
@@ -168,13 +168,14 @@ def train_model(config, model_class, name):
     training_ds = dataset.sel(time=slice("2020-07-01 09:00", "2020-10-01 09:00"))
     validation_ds = dataset.sel(time=slice("2020-12-01 09:00", "2020-12-10 09:00"))
     datapoints = np.load(f'/datastores/{config["dataset"]}', allow_pickle=True)['datapoints']#.to_list()
-    # datapoints = np.load('/datastores/data2/data.npz', allow_pickle=True)['data']#.to_list()
+    valid_datapoints = np.load(f'{"valid_set.npz" if "validation" not in config else config["validation"]}', allow_pickle=True)['data']#.to_list()
     np.random.shuffle(datapoints)
-    tot_points = len(datapoints)
-    train_len = int(tot_points - VALIDATION_SIZE) 
+    tot_points = len(datapoints) 
+    validation_size = len(valid_datapoints)
     datapoints = datapoints.reshape((tot_points, 2))
-    training = datapoints[:train_len].tolist()
-    testing = datapoints[train_len:].tolist()
+    valid_datapoints = valid_datapoints.reshape((validation_size, 2))
+    training = datapoints.tolist()
+    testing = valid_datapoints.tolist()
 
     ch_training = ClimateHackDataset(training_ds, crops_per_slice=5, day_limit=7, outputs=config['outputs'])#, timeskip=8)
     ch_training.cached_items = training# + testing
