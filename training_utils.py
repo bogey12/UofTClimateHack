@@ -186,7 +186,7 @@ def train_model(config, model_class, name):
     checkpoint_callback = ModelCheckpoint(
         monitor="valid_loss",
         dirpath="submission/",
-        filename= name + "-{epoch:02d}-{valid_loss:.2f}",
+        filename= name + "-{epoch:02d}-{valid_loss:.4f}",
         save_top_k=3,
         mode="min",
         save_weights_only=True
