@@ -51,7 +51,7 @@ class PredictionTrainer(pl.LightningModule):
         decay = 0 if 'weight_decay' not in self.config else self.config['weight_decay']
         optimizer = optim.Adam(self.parameters(), lr=self.config['lr'], weight_decay=decay)
         # lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, verbose=True, factor=0.7)
-        lr_scheduler = optim.lr_scheduler.CyclicLR(optimizer, base_lr=self.config['lr'], max_lr=0.1, cycle_momentum=False)
+        lr_scheduler = optim.lr_scheduler.CyclicLR(optimizer, base_lr=self.config['lr'], max_lr=0.1, cycle_momentum=False, verbose=True)
         return {'optimizer': optimizer, 'lr_scheduler': lr_scheduler, 'monitor':'valid_loss'}
         # return optimizer
 
@@ -142,6 +142,7 @@ class PredictionTrainer(pl.LightningModule):
             loss = self.criterion(predictions, batch_targets[:,:predictions.shape[1]])
 
         self.log('valid_loss', loss, prog_bar=True)
+        wandb.log({'valid_loss':loss})
         #logging, comment if doesnt work
         grid_expected = wandb.Image(torchvision.utils.make_grid([batch_targets[:, i] for i in range(self.config['outputs'])]))
         grid_predicted = wandb.Image(torchvision.utils.make_grid([predictions[:, i] for i in range(self.config['outputs'])]))
