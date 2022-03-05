@@ -138,7 +138,7 @@ class PredictionTrainer(pl.LightningModule):
         #     predictions = rearrange(predictions, 'b (t c) h w -> b t h w c', c=2)
         # target = torch.tensor(batch_targets).view(1, 24, 64, 64)
         if not self.config['opt_flow']:
-            loss = self.criterion(predictions.unsqueeze(dim=2), batch_targets[:,:24].unsqueeze(dim=2))
+            loss = self.criterion(predictions.unsqueeze(dim=2), batch_targets[:,:self.config['outputs']].unsqueeze(dim=2))
         else:
             predictions = rearrange(predictions, 'b (t c) h w -> b t h w c', c=2)
             # target = rearrange(batch_targets[:,:predictions.shape[1]], 'b t h w c -> b (t c) h w')
@@ -146,8 +146,8 @@ class PredictionTrainer(pl.LightningModule):
 
         self.log('valid_loss', loss, prog_bar=True)
         #logging, comment if doesnt work
-        grid_expected = torchvision.utils.make_grid(torch.tensor(batch_targets).view(24, 1, 64, 64))
-        grid_predicted = torchvision.utils.make_grid(torch.tensor(predictions).view(24, 1, 64, 64))
+        grid_expected = wandb.Image(torchvision.utils.make_grid([batch_targets[:, i] for i in range(self.config['outputs'])], value_range=(0, 1023)))
+        grid_predicted = wandb.Image(torchvision.utils.make_grid([predictions[:, i] for i in range(self.config['outputs'])], value_range=(0, 1023)))
         wandb.log({"predictions":grid_predicted, "expected": grid_expected})
         # self.logger.experiment.add_images('predictions', grid, 0)
 
