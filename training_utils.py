@@ -1,4 +1,5 @@
 
+from audioop import avg
 from multiprocessing.dummy import freeze_support
 # from turtle import forward
 import matplotlib.pyplot as plt
@@ -142,7 +143,6 @@ class PredictionTrainer(pl.LightningModule):
             loss = self.criterion(predictions, batch_targets[:,:predictions.shape[1]])
 
         self.log('valid_loss', loss, prog_bar=True)
-        wandb.log({'valid_loss':loss})
         #logging, comment if doesnt work
         grid_expected = wandb.Image(torchvision.utils.make_grid([batch_targets[:, i] for i in range(self.config['outputs'])]))
         grid_predicted = wandb.Image(torchvision.utils.make_grid([predictions[:, i] for i in range(self.config['outputs'])]))
@@ -151,9 +151,10 @@ class PredictionTrainer(pl.LightningModule):
 
         return loss
 
-    # def validation_epoch_end(self, outputs):
-    #     avg_loss = torch.stack([x["valid_loss"] for x in outputs]).mean()
-    #     self.log("ptl/val_loss", avg_loss)
+    def validation_epoch_end(self, outputs):
+        avg_loss = torch.stack([x["valid_loss"] for x in outputs]).mean()
+        # self.log("ptl/val_loss", avg_loss)
+        wandb.log({'avg_loss':avg_loss})
 
 def train_model(config, model_class, name, convert=False, **args):
     #add dataset to config  
