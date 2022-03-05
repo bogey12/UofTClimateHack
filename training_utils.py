@@ -50,7 +50,8 @@ class PredictionTrainer(pl.LightningModule):
     def configure_optimizers(self):
         decay = 0 if 'weight_decay' not in self.config else self.config['weight_decay']
         optimizer = optim.Adam(self.parameters(), lr=self.config['lr'], weight_decay=decay)
-        lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, verbose=True, factor=0.7)
+        # lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, verbose=True, factor=0.7)
+        lr_scheduler = optim.lr_scheduler.CyclicLR(optimizer, base_lr=self.config['lr'], max_lr=0.1)
         return {'optimizer': optimizer, 'lr_scheduler': lr_scheduler, 'monitor':'valid_loss'}
         # return optimizer
 
