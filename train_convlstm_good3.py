@@ -69,6 +69,6 @@ if __name__ == '__main__':
         "dataset": args['dataset'],
         "patience": args['patience']
     }
-    train_model(config, ConvLSTM, 'convlstm-3')
+    train_model(config, ConvLSTM, 'convlstm-3', convert=True)
   
     
