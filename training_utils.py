@@ -30,7 +30,7 @@ import wandb
 BATCH_SIZE = 1
 SATELLITE_ZARR_PATH = "gs://public-datasets-eumetsat-solar-forecasting/satellite/EUMETSAT/SEVIRI_RSS/v3/eumetsat_seviri_hrv_uk.zarr"
 class PredictionTrainer(pl.LightningModule):
-    def __init__(self, config, model=None, device=torch.device('cpu'), convert=False, data_range=1023, **args):
+    def __init__(self, config, model=None, convert=False, data_range=1023, **args):
         super().__init__()
         self.model = model(config)
         if config['criterion'] == 'mse':
@@ -59,6 +59,11 @@ class PredictionTrainer(pl.LightningModule):
         STD = 146.06215
         mi1 = None
         ma1 = None
+        if self.config['in_opt_flow']:
+            batch_features = rearrange(batch_features, 'b t h w c -> b (t c) h w', c=2) 
+        # print(batch_features)
+        if self.convert:
+            batch_features = rearrange(batch_features, 'b (t c) h w -> b t c h w', c=1)
         if self.config['normalize']:
             if self.config['local_norm']:
                 MEAN = torch.mean(batch_features)
@@ -100,11 +105,6 @@ class PredictionTrainer(pl.LightningModule):
     def training_step(self, training_batch, batch_idx):
         # batch_coordinates, batch_features, batch_targets = training_batch
         batch_features, batch_targets = training_batch[-2:]
-        if self.config['in_opt_flow']:
-            batch_features = rearrange(batch_features, 'b t h w c -> b (t c) h w', c=2) 
-        # print(batch_features)
-        if self.convert:
-            batch_features = rearrange(batch_features, 'b (t c) h w -> b t c h w', c=1)
         batch_features, extra = self.preprocessing(batch_features)
         predictions = self.model(batch_features, **self.args)
         predictions = self.postprocessing(predictions, extra)
@@ -125,10 +125,6 @@ class PredictionTrainer(pl.LightningModule):
     def validation_step(self, training_batch, batch_idx):
         # batch_coordinates, batch_features, batch_targets = training_batch
         batch_features, batch_targets = training_batch[-2:]
-        if self.config['in_opt_flow']:
-            batch_features = rearrange(batch_features, 'b t h w c -> b (t c) h w', c=2) 
-        if self.convert:
-            batch_features = rearrange(batch_features, 'b (t c) h w -> b t c h w', c=1) 
         batch_features, extra = self.preprocessing(batch_features)
         predictions = self.model(batch_features, **self.args)
         if self.convert:
@@ -157,7 +153,7 @@ class PredictionTrainer(pl.LightningModule):
     #     avg_loss = torch.stack([x["valid_loss"] for x in outputs]).mean()
     #     self.log("ptl/val_loss", avg_loss)
 
-def train_model(config, model_class, name, **args):
+def train_model(config, model_class, name, convert=False, **args):
     #add dataset to config  
     #add epochs to config  
     #add name to config
@@ -196,7 +192,7 @@ def train_model(config, model_class, name, **args):
         mode="min",
         save_weights_only=True
     )
-    training_model = PredictionTrainer(config, model=model_class, device=device, convert=False)
+    training_model = PredictionTrainer(config, model=model_class, device=device, convert=convert)
     early_stop = EarlyStopping('valid_loss', patience=config['patience'], mode='min')
     trainer = pl.Trainer(gpus=1, precision=32, max_epochs=config['epochs'], callbacks=[early_stop, checkpoint_callback], accumulate_grad_batches=7, gradient_clip_val=50.0, logger=wandb_logger, **args)#, detect_anomaly=True)#, overfit_batches=1)#, benchmark=True)#, limit_train_batches=1)
     trainer.fit(training_model, training_dl, validation_dl)

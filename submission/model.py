@@ -399,44 +399,9 @@ class Encoder(nn.Module):
     
     def forward(self, features):
         x = features
-        if self.config['local_norm']:
-            MEAN = torch.mean(x)
-            STD = torch.std(x)
-        def preprocessing(x, **args):
-            if 'minmax' in self.normalize:
-                mi1 = x.min()
-                ma1 = x.max()
-                x -= mi1
-                x /= (ma1 - mi1)
-                x *= 2
-                x -= 1
-                return x, {'mi1':mi1, 'ma1':ma1}
-            elif 'standardize' in self.normalize:
-                x -= MEAN
-                x /= STD
-                return x, {}
-
-        def postprocessing(x, **args):
-            if 'minmax' in self.normalize:
-                x += 1
-                x /= 2
-                x *= (ma1 - mi1)
-                x += mi1
-                return x
-            elif 'standardize' in self.normalize:
-                return x*STD + MEAN
-
-        if self.normalize:
-            x, extra = preprocessing(x, MEAN=MEAN, STD=STD)
         x = self.dropout(x)
         x = self.rencoding(x)
-        if self.normalize:
-            if self.config['output_std'] != 0:
-                MEAN = self.config['output_mean']
-                STD = self.config['output_std']
-            return postprocessing(x, MEAN=MEAN, STD=STD, **extra)
-        else:
-            return x
+        return x
 
 
 
@@ -667,17 +632,28 @@ class ConvLSTM(nn.Module):
     def __init__(self, config):
         super().__init__()
         # self.dropout = nn.Dropout(p=0.1)
-        self.encoder = Encoder1(config['encoder'], dropout=config['dropout'])
-        self.decoder = Decoder1(config['decoder'], dropout=config['dropout'], outputs=config['outputs'])
+        encoder = [('conv', 'leaky', 1, 32, 3, 1, 2),
+             ('convlstm', '', 32, 32, 3, 1, 1),
+             ('conv', 'leaky', 32, 64, 3, 1, 2),
+             ('convlstm', '', 64, 64, 3, 1, 1),
+             ('conv', 'leaky', 64, 128, 3, 1, 2),
+             ('convlstm', '', 128, 128, 3, 1, 1)]
+        decoder = [('deconv', 'leaky', 128, 64, 4, 1, 2),
+                ('convlstm', '', 128, 64, 3, 1, 1),
+                ('deconv', 'leaky', 64, 32, 4, 1, 2),
+                ('convlstm', '', 64, 32, 3, 1, 1),
+                ('deconv', 'leaky', 32, 32, 4, 1, 2),
+                ('convlstm', '', 33, 32, 3, 1, 1),
+                ('conv', 'sigmoid', 32, 1, 1, 0, 1)]
+        # self.encoder = Encoder1(config['encoder'], dropout=config['dropout'])
+        # self.decoder = Decoder1(config['decoder'], dropout=config['dropout'], outputs=config['outputs'])
+        self.encoder = Encoder1(encoder, dropout=config['dropout'])
+        self.decoder = Decoder1(decoder, dropout=config['dropout'], outputs=config['outputs'])
 
     def forward(self, x, fac=1023):
-        x -= MEAN
-        x /= STD
-        # x = self.dropout(x)
         x = self.encoder(x)
         x = self.decoder(x)
-        # x = x*fac
-        return x*STD + MEAN
+        return x
         # return x#*STD + MEAN
 
 class ModelWrapper(nn.Module):
