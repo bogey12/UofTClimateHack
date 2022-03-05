@@ -30,7 +30,7 @@ import wandb
 BATCH_SIZE = 1
 SATELLITE_ZARR_PATH = "gs://public-datasets-eumetsat-solar-forecasting/satellite/EUMETSAT/SEVIRI_RSS/v3/eumetsat_seviri_hrv_uk.zarr"
 class PredictionTrainer(pl.LightningModule):
-    def __init__(self, config, model=None, convert=False, data_range=1023, **args):
+    def __init__(self, config, model=None, device=None, convert=False, data_range=1023, **args):
         super().__init__()
         self.model = model(config)
         if config['criterion'] == 'mse':
