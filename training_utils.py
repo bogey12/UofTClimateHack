@@ -146,8 +146,8 @@ class PredictionTrainer(pl.LightningModule):
 
         self.log('valid_loss', loss, prog_bar=True)
         #logging, comment if doesnt work
-        grid_expected = wandb.Image(torchvision.utils.make_grid([batch_targets[:, i] for i in range(self.config['outputs'])], value_range=(0, 1023)))
-        grid_predicted = wandb.Image(torchvision.utils.make_grid([predictions[:, i] for i in range(self.config['outputs'])], value_range=(0, 1023)))
+        grid_expected = wandb.Image(torchvision.utils.make_grid([batch_targets[:, i] for i in range(self.config['outputs'])]))
+        grid_predicted = wandb.Image(torchvision.utils.make_grid([predictions[:, i] for i in range(self.config['outputs'])]))
         wandb.log({"predictions":grid_predicted, "expected": grid_expected})
         # self.logger.experiment.add_images('predictions', grid, 0)
 
