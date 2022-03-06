@@ -26,6 +26,8 @@ from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
 from collections import defaultdict
 import wandb
+import math
+import torch.nn.functional as F
 
 
 BATCH_SIZE = 1
@@ -200,3 +202,18 @@ def train_model(config, model_class, name, convert=False, **args):
     trainer = pl.Trainer(gpus=1, precision=32, max_epochs=config['epochs'], callbacks=[early_stop, checkpoint_callback], accumulate_grad_batches=7, gradient_clip_val=50.0, logger=wandb_logger, **args)#, detect_anomaly=True)#, overfit_batches=1)#, benchmark=True)#, limit_train_batches=1)
     trainer.fit(training_model, training_dl, validation_dl)
     torch.save(trainer.model.state_dict(), f'{name}.pt')
+
+def extract_image_patches(x, kernel, stride=1, dilation=1):
+    # Do TF 'SAME' Padding
+    b,c,h,w = x.shape
+    h2 = math.ceil(h / stride)
+    w2 = math.ceil(w / stride)
+    pad_row = (h2 - 1) * stride + (kernel - 1) * dilation + 1 - h
+    pad_col = (w2 - 1) * stride + (kernel - 1) * dilation + 1 - w
+    x = F.pad(x, (pad_row//2, pad_row - pad_row//2, pad_col//2, pad_col - pad_col//2))
+    
+    # Extract patches
+    patches = x.unfold(2, kernel, stride).unfold(3, kernel, stride)
+    patches = patches.permute(0,4,5,1,2,3).contiguous()
+    
+    return patches.view(b,-1,patches.shape[-2], patches.shape[-1])
