@@ -154,10 +154,12 @@ class PredictionTrainer(pl.LightningModule):
 
         return loss
 
-    # def validation_epoch_end(self, outputs):
-    #     avg_loss = torch.stack([x["valid_loss"] for x in outputs]).mean()
-    #     # self.log("ptl/val_loss", avg_loss)
-    #     wandb.log({'avg_loss':avg_loss})
+    def validation_epoch_end(self, outputs):
+        if len(outputs) > 0:  
+            print(outputs)      
+            avg_loss = torch.stack(outputs).mean()
+            print(avg_loss)
+            wandb.log({'avg_loss':avg_loss})
 
 def train_model(config, model_class, name, convert=False, **args):
     #add dataset to config  
