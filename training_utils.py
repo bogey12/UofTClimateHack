@@ -156,9 +156,9 @@ class PredictionTrainer(pl.LightningModule):
 
     def validation_epoch_end(self, outputs):
         if len(outputs) > 0:  
-            print(outputs)      
+            # print(outputs)      
             avg_loss = torch.stack(outputs).mean()
-            print(avg_loss)
+            # print(avg_loss)
             wandb.log({'avg_loss':avg_loss})
 
 def train_model(config, model_class, name, convert=False, **args):
