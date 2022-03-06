@@ -128,6 +128,6 @@ if __name__ == '__main__':
         "dataset": args['dataset'],
         "patience": args['patience']
     }
-    train_model(config, ConvLSTM, 'perceiver', convert=True)
+    train_model(config, TempModel, 'perceiver', convert=True)
   
     
