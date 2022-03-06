@@ -60,13 +60,13 @@ class TempModel(nn.Module):
         fourier_position_encoding_kwargs_decoder = dict(
             concat_pos=True, max_resolution=(128, 128), num_bands=64, sine_only=False
         )
-        config = PerceiverConfig(use_query_residual=True, 
+        pconfig = PerceiverConfig(use_query_residual=True, 
                                 d_model=322, 
                                 train_size=(128,128),
                                 num_cross_attention_heads=1)
 
         image_preprocessor = PerceiverImagePreprocessor(
-            config,
+            pconfig,
             prep_type="patches",
             spatial_downsample=1,
             in_channels=1,
@@ -78,10 +78,10 @@ class TempModel(nn.Module):
             fourier_position_encoding_kwargs=fourier_position_encoding_kwargs_preprocessor,
         )
         self.perceiver = PerceiverModel(
-            config,
+            pconfig,
             input_preprocessor=image_preprocessor,
             decoder=PerceiverOpticalFlowDecoder(
-                config,
+                pconfig,
                 num_channels=image_preprocessor.num_channels,
                 output_image_shape=(128, 128),
                 rescale_factor=100.0,
@@ -99,7 +99,7 @@ class TempModel(nn.Module):
         x = extract_image_patches(x, 3).view(1, 12, 9, 128, 128)
         x = self.dropout(x)
         # x = self.ef(x)
-        x = self.perceiver(x)
+        x = self.perceiver(x).logits
         x = rearrange(x, 'b h w t -> b t h w')
         return x[:, :, 32:96, 32:96]
 
@@ -128,6 +128,6 @@ if __name__ == '__main__':
         "dataset": args['dataset'],
         "patience": args['patience']
     }
-    train_model(config, ConvLSTM, 'perceiver', convert=True)
+    train_model(config, TempModel, 'perceiver')
   
     

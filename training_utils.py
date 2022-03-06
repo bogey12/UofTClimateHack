@@ -144,19 +144,20 @@ class PredictionTrainer(pl.LightningModule):
             # target = rearrange(batch_targets[:,:predictions.shape[1]], 'b t h w c -> b (t c) h w')
             loss = self.criterion(predictions, batch_targets[:,:predictions.shape[1]])
 
-        self.log('valid_loss', loss, prog_bar=True)
-        #logging, comment if doesnt work
         grid_expected = wandb.Image(torchvision.utils.make_grid([batch_targets[:, i] for i in range(self.config['outputs'])]))
         grid_predicted = wandb.Image(torchvision.utils.make_grid([predictions[:, i] for i in range(self.config['outputs'])]))
         wandb.log({"predictions":grid_predicted, "expected": grid_expected})
+        
+        self.log('valid_loss', loss, prog_bar=True)
+        #logging, comment if doesnt work
         # self.logger.experiment.add_images('predictions', grid, 0)
 
         return loss
 
-    def validation_epoch_end(self, outputs):
-        avg_loss = torch.stack([x["valid_loss"] for x in outputs]).mean()
-        # self.log("ptl/val_loss", avg_loss)
-        wandb.log({'avg_loss':avg_loss})
+    # def validation_epoch_end(self, outputs):
+    #     avg_loss = torch.stack([x["valid_loss"] for x in outputs]).mean()
+    #     # self.log("ptl/val_loss", avg_loss)
+    #     wandb.log({'avg_loss':avg_loss})
 
 def train_model(config, model_class, name, convert=False, **args):
     #add dataset to config  
