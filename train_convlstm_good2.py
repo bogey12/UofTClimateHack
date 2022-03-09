@@ -78,25 +78,25 @@ SATELLITE_ZARR_PATH = "gs://public-datasets-eumetsat-solar-forecasting/satellite
 N_IMS = 24
 
 if __name__ == '__main__':
-    innertup = list(map(int, args['innersize'].split()))
-    config = {
-        "lr": args['lr'],
-        "normalize": args['normalize'], 
-        "local_norm": args['localnorm'],
-        "in_opt_flow": False,
-        "opt_flow": False,
-        "criterion": args['criterion'],
-        "output_mean": 0,
-        "output_std": 0,
-        "inputs":args['inputs'],
-        "outputs":args['outputs'],
-        "dropout": args['dropout'],
-        "weight_decay":args['weightdecay'],
-        "inner_size":innertup,
-        "epochs": args['epochs'],
-        "dataset": args['dataset'],
-        "patience": args['patience']
-    }
-    train_model(config, TempModel, 'convlstm-2')
+    args['innersize'] = list(map(int, args['innersize'].split()))
+    # config = {
+    #     "lr": args['lr'],
+    #     "normalize": args['normalize'], 
+    #     "local_norm": args['localnorm'],
+    #     "in_opt_flow": False,
+    #     "opt_flow": False,
+    #     "criterion": args['criterion'],
+    #     "output_mean": 0,
+    #     "output_std": 0,
+    #     "inputs":args['inputs'],
+    #     "outputs":args['outputs'],
+    #     "dropout": args['dropout'],
+    #     "weight_decay":args['weightdecay'],
+    #     "inner_size":innertup,
+    #     "epochs": args['epochs'],
+    #     "dataset": args['dataset'],
+    #     "patience": args['patience']
+    # }
+    train_model(args, TempModel, 'convlstm-2')
   
     
