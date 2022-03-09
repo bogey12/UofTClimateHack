@@ -20,7 +20,11 @@ default_config = {
     "patience": 20,
     "inner_size": (8, 32, 64),
     "convert": False,
-    "batch_size": 1
+    "batch_size": 1,
+    "lr_scheduler": "plateau",
+    "scheduler_gamma": 0.7,
+    "scheduler_patience": 5,
+    "scheduler_max": 0.1,
 }
 
 

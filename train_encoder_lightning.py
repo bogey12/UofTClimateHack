@@ -25,39 +25,10 @@ from training_config import add_arguments
 
 parser = argparse.ArgumentParser(description='Train skip conn UNet')
 add_arguments(parser)
-
 args = vars(parser.parse_args())
 print(args)
 
-
-BATCH_SIZE = 1
-EPOCHS = 1
-SATELLITE_ZARR_PATH = "gs://public-datasets-eumetsat-solar-forecasting/satellite/EUMETSAT/SEVIRI_RSS/v3/eumetsat_seviri_hrv_uk.zarr"
-N_IMS = 24
-
-
-
 if __name__ == '__main__':
     args['separate'] = list(map(int, args['separate'].split(' ')))
-    # config = {
-    #     "separate": separate_tup,
-    #     "n_layers": args['nlayers'],
-    #     "dropout": args['dropout'],
-    #     "swap": args['swap'],
-    #     "lr": args['lr'],
-    #     "normalize": args['normalize'], 
-    #     "local_norm": args['localnorm'],
-    #     "output_mean": args['outputmean'],
-    #     "output_std": args['outputstd'],
-    #     "opt_flow":args['optflow'],
-    #     "inputs":args['inputs'],
-    #     "outputs":args['outputs'],
-    #     "in_opt_flow":args['inoptflow'],
-    #     "criterion": args['criterion'],
-    #     "weight_decay":args['weightdecay'],
-    #     "epochs": args['epochs'],
-    #     "dataset": args['dataset'],
-    #     "patience": args['patience']
-    # }
     train_model(args, Encoder, 'conv3d')
     
