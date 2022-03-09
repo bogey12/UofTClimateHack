@@ -50,6 +50,7 @@ class PredictionTrainer(pl.LightningModule):
         self.args = args
         self.convert = convert
         self.logged = sorted(random.sample(list(range(0, 200)), k=10))
+        self.lr = None
         #self.truncated_bptt_steps = 6
 
     def forward(self, x):
