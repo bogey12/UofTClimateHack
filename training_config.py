@@ -19,5 +19,6 @@ default_config = {
     "dataset": '/datastores/ds-total/ds_total.npz',
     "patience": 20,
     "inner_size": (8, 32, 64),
-    "convert": False
+    "convert": False,
+    "batch_size": 1
 }

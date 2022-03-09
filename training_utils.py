@@ -32,7 +32,7 @@ from training_config import *
 from processing_utils import *
 from string import ascii_lowercase, digits
 
-BATCH_SIZE = 1
+# BATCH_SIZE = 1
 NUM_IMAGES = 10
 SATELLITE_ZARR_PATH = "gs://public-datasets-eumetsat-solar-forecasting/satellite/EUMETSAT/SEVIRI_RSS/v3/eumetsat_seviri_hrv_uk.zarr"
 class PredictionTrainer(pl.LightningModule):
@@ -143,7 +143,7 @@ def train_model(config, model_class, name, **args):
     ch_training.cached_items = training# + testing
     ch_validation = ClimateHackDataset(validation_ds, crops_per_slice=5, day_limit=3, outputs=config['outputs'])#, cache=False)
     ch_validation.cached_items = testing
-    training_dl, validation_dl = [DataLoader(ds, batch_size=BATCH_SIZE, num_workers=0, pin_memory=True) for ds in [ch_training, ch_validation]]
+    training_dl, validation_dl = [DataLoader(ds, batch_size=config['batch_size'], num_workers=0, pin_memory=True) for ds in [ch_training, ch_validation]]
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     checkpoint_callback = ModelCheckpoint(
         monitor="valid_loss",
