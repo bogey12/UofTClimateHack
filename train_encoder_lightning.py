@@ -51,8 +51,6 @@ parser.add_argument('--inoptflow', required=False, type=int, default=0)
 parser.add_argument('--criterion', required=False, type=str, default="msssim")
 parser.add_argument('--weightdecay', required=False, type=float, default=1e-8)
 
-
-
 args = vars(parser.parse_args())
 print(args)
 
@@ -62,27 +60,29 @@ EPOCHS = 1
 SATELLITE_ZARR_PATH = "gs://public-datasets-eumetsat-solar-forecasting/satellite/EUMETSAT/SEVIRI_RSS/v3/eumetsat_seviri_hrv_uk.zarr"
 N_IMS = 24
 
+
+
 if __name__ == '__main__':
-    separate_tup = list(map(int, args['separate'].split(' ')))
-    config = {
-        "separate": separate_tup,
-        "n_layers": args['nlayers'],
-        "dropout": args['dropout'],
-        "swap": args['swap'],
-        "lr": args['lr'],
-        "normalize": args['normalize'], 
-        "local_norm": args['localnorm'],
-        "output_mean": args['outputmean'],
-        "output_std": args['outputstd'],
-        "opt_flow":args['optflow'],
-        "inputs":args['inputs'],
-        "outputs":args['outputs'],
-        "in_opt_flow":args['inoptflow'],
-        "criterion": args['criterion'],
-        "weight_decay":args['weightdecay'],
-        "epochs": args['epochs'],
-        "dataset": args['dataset'],
-        "patience": args['patience']
-    }
-    train_model(config, Encoder, 'conv3d')
+    args['separate'] = list(map(int, args['separate'].split(' ')))
+    # config = {
+    #     "separate": separate_tup,
+    #     "n_layers": args['nlayers'],
+    #     "dropout": args['dropout'],
+    #     "swap": args['swap'],
+    #     "lr": args['lr'],
+    #     "normalize": args['normalize'], 
+    #     "local_norm": args['localnorm'],
+    #     "output_mean": args['outputmean'],
+    #     "output_std": args['outputstd'],
+    #     "opt_flow":args['optflow'],
+    #     "inputs":args['inputs'],
+    #     "outputs":args['outputs'],
+    #     "in_opt_flow":args['inoptflow'],
+    #     "criterion": args['criterion'],
+    #     "weight_decay":args['weightdecay'],
+    #     "epochs": args['epochs'],
+    #     "dataset": args['dataset'],
+    #     "patience": args['patience']
+    # }
+    train_model(args, Encoder, 'conv3d')
     
