@@ -26,7 +26,8 @@ default_config = {
     "scheduler_patience": 5,
     "scheduler_max": 0.1,
     "optimizer": "adam",
-    "momentum": 0.7
+    "momentum": 0.7,
+    "gpu": 1
 }
 
 

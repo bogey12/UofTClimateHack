@@ -60,9 +60,9 @@ class PredictionTrainer(pl.LightningModule):
 
     def configure_optimizers(self):
         if self.config['optimizer'] == 'adam':
-            optimizer = optim.Adam(self.parameters(), lr=self.config['lr'], weight_decay=self.config['weight_decay'])
+            optimizer = optim.Adam(self.parameters(), lr=(self.lr or self.config['lr']), weight_decay=self.config['weight_decay'])
         elif self.config['optimizer'] == 'sgd':
-            optimizer = optim.SGD(self.parameters(), lr=self.config['lr'], weight_decay=self.config['weight_decay'], momentum=self.config['momentum'])
+            optimizer = optim.SGD(self.parameters(), lr=(self.lr or self.config['lr']), weight_decay=self.config['weight_decay'], momentum=self.config['momentum'])
         
         if self.config['lr_scheduler'] == 'plateau':
             lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=self.config['scheduler_patience'], verbose=True, factor=self.config['scheduler_gamma'])
@@ -83,7 +83,7 @@ class PredictionTrainer(pl.LightningModule):
             # target = rearrange(batch_targets[:,:predictions.shape[1]], 'b t h w c -> b (t c) h w')
             loss = self.criterion(predictions, batch_targets[:,:predictions.shape[1]])
         # loss = self.criterion(predictions, batch_targets[:,:predictions.shape[1]])
-        self.log('train_loss', loss, prog_bar=True)
+        self.log('train_loss', loss, prog_bar=True, sync_dist=True)
         return loss
 
     def validation_step(self, training_batch, batch_idx):
@@ -104,7 +104,7 @@ class PredictionTrainer(pl.LightningModule):
             wandb.log({"predictions":grid_predicted, "expected": grid_expected})
             self.logged.pop(0)
 
-        self.log('valid_loss', loss, prog_bar=True)
+        self.log('valid_loss', loss, prog_bar=True, sync_dist=True)
         return loss
 
     def validation_epoch_end(self, outputs):
@@ -162,7 +162,10 @@ def train_model(config, model_class, name, **args):
     )
     training_model = PredictionTrainer(config, model=model_class, device=device)
     early_stop = EarlyStopping('valid_loss', patience=config['patience'], mode='min')
-    trainer = pl.Trainer(gpus=1, precision=32, max_epochs=config['epochs'], callbacks=[early_stop, checkpoint_callback], accumulate_grad_batches=7, gradient_clip_val=50.0, logger=wandb_logger, **args)#, detect_anomaly=True)#, overfit_batches=1)#, benchmark=True)#, limit_train_batches=1)
+    if config['gpu'] != 1:
+        trainer = pl.Trainer(gpus=config['gpu'], precision=32, max_epochs=config['epochs'], callbacks=[early_stop, checkpoint_callback], accumulate_grad_batches=7, gradient_clip_val=50.0, logger=wandb_logger, strategy="ddp", **args)#, detect_anomaly=True)#, overfit_batches=1)#, benchmark=True)#, limit_train_batches=1)
+    else:
+        trainer = pl.Trainer(gpus=config['gpu'], precision=32, max_epochs=config['epochs'], callbacks=[early_stop, checkpoint_callback], accumulate_grad_batches=7, gradient_clip_val=50.0, logger=wandb_logger, **args)#, detect_anomaly=True)#, overfit_batches=1)#, benchmark=True)#, limit_train_batches=1)
     trainer.fit(training_model, training_dl, validation_dl)
     torch.save(trainer.model.state_dict(), f'{name}.pt')
 
