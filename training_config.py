@@ -28,7 +28,8 @@ default_config = {
     "optimizer": "adam",
     "momentum": 0.7,
     "gpu": 1,
-    "accumulate": 7
+    "accumulate": 7,
+    "checkpoint": "",
 }
 
 
@@ -44,4 +45,3 @@ default_arguments['inner_size'][2] = "8 32 64"
 def add_arguments(parser : argparse.ArgumentParser):
     for _, v in default_arguments.items():
         parser.add_argument(v[0], **dict(zip(arg_names, v[1:])))
-        

@@ -161,7 +161,10 @@ def train_model(rawargs, model_class, name, **args):
         mode="min",
         save_weights_only=True
     )
-    training_model = PredictionTrainer(config, model=model_class, device=device)
+    if config['checkpoint'] != '':
+        training_model = PredictionTrainer.load_from_checkpoint(config['checkpoint'], config=config, model=model_class, device=device)
+    else:
+        training_model = PredictionTrainer(config, model=model_class, device=device)
     early_stop = EarlyStopping('valid_loss', patience=config['patience'], mode='min')
     if config['gpu'] != 1:
         trainer = pl.Trainer(gpus=config['gpu'], precision=32, max_epochs=config['epochs'], callbacks=[early_stop, checkpoint_callback], accumulate_grad_batches=config['accumulate'], gradient_clip_val=50.0, logger=wandb_logger, strategy="ddp", **args)#, detect_anomaly=True)#, overfit_batches=1)#, benchmark=True)#, limit_train_batches=1)
