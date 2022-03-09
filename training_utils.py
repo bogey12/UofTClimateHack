@@ -28,6 +28,8 @@ from collections import defaultdict
 import wandb
 import math
 import torch.nn.functional as F
+from training_config import *
+from processing_utils import *
 
 
 BATCH_SIZE = 1
@@ -60,60 +62,12 @@ class PredictionTrainer(pl.LightningModule):
         return {'optimizer': optimizer, 'lr_scheduler': lr_scheduler, 'monitor':'valid_loss'}
         # return optimizer
 
-    def preprocessing(self, batch_features):
-        MEAN = 299.17117
-        STD = 146.06215
-        mi1 = None
-        ma1 = None
-        if self.config['in_opt_flow']:
-            batch_features = rearrange(batch_features, 'b t h w c -> b (t c) h w', c=2) 
-        # print(batch_features)
-        if self.convert:
-            batch_features = rearrange(batch_features, 'b (t c) h w -> b t c h w', c=1)
-        if self.config['normalize']:
-            if self.config['local_norm']:
-                MEAN = torch.mean(batch_features)
-                STD = torch.std(batch_features)
-            if self.config['normalize'] == 'standardize':
-                batch_features -= MEAN
-                batch_features /= STD
-            elif self.config['normalize'] == 'minmax':
-                mi1 = batch_features.min()
-                ma1 = batch_features.max()
-                batch_features -= mi1
-                batch_features /= (ma1 - mi1)
-                batch_features *= 2
-                batch_features -= 1
-        return batch_features, {'MEAN':MEAN, 'STD':STD, 'mi1':mi1, 'ma1':ma1}
-
-    def postprocessing(self, predictions, extra):
-        MEAN = extra['MEAN']
-        STD = extra['STD']
-        mi1 = extra['mi1']
-        ma1 = extra['ma1']
-        if self.convert:
-            predictions = rearrange(predictions, 'b t c h w -> b (t c) h w')
-        if self.config['normalize']:
-            if self.config['output_std']:
-                MEAN = self.config['output_mean']
-                STD = self.config['output_std']
-            if self.config['normalize'] == 'standardize':
-                predictions *= STD
-                predictions += MEAN
-            elif self.config['normalize'] == 'minmax':
-                predictions += 1
-                predictions /= 2
-                predictions *= (ma1 - mi1)
-                predictions += mi1
-            # predictions *= 1023
-        return predictions
-
     def training_step(self, training_batch, batch_idx):
         # batch_coordinates, batch_features, batch_targets = training_batch
         batch_features, batch_targets = training_batch[-2:]
-        batch_features, extra = self.preprocessing(batch_features)
+        batch_features, extra = preprocessing(self.config, batch_features)
         predictions = self.model(batch_features, **self.args)
-        predictions = self.postprocessing(predictions, extra)
+        predictions = postprocessing(self.config, predictions, extra)
         # if self.config['optflow']:
         #     predictions = rearrange(predictions, 'b (t c) h w -> b t h w c', c=2)
         # batch_targets /= self.data_range
@@ -149,7 +103,7 @@ class PredictionTrainer(pl.LightningModule):
         grid_expected = wandb.Image(torchvision.utils.make_grid([batch_targets[:, i] for i in range(self.config['outputs'])]))
         grid_predicted = wandb.Image(torchvision.utils.make_grid([predictions[:, i] for i in range(self.config['outputs'])]))
         
-        if batch_idx == self.logged[0]:
+        if len(self.logged) > 0 and batch_idx == self.logged[0]:
             wandb.log({"predictions":grid_predicted, "expected": grid_expected})
             self.logged.pop(0)
 
