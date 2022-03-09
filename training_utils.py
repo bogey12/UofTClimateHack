@@ -116,7 +116,7 @@ class PredictionTrainer(pl.LightningModule):
         self.logged = sorted(random.sample(list(range(0, 200)), k=10))
 
 
-def train_model(config, model_class, name, **args):
+def train_model(rawargs, model_class, name, **args):
     #add dataset to config  
     #add epochs to config  
     #add name to config
