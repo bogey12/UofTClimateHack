@@ -25,6 +25,8 @@ default_config = {
     "scheduler_gamma": 0.7,
     "scheduler_patience": 5,
     "scheduler_max": 0.1,
+    "optimizer": "adam",
+    "momentum": 0.7
 }
 
 

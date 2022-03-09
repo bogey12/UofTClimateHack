@@ -59,8 +59,10 @@ class PredictionTrainer(pl.LightningModule):
         return x
 
     def configure_optimizers(self):
-        
-        optimizer = optim.Adam(self.parameters(), lr=self.config['lr'], weight_decay=self.config['weight_decay'])
+        if self.config['optimizer'] == 'adam':
+            optimizer = optim.Adam(self.parameters(), lr=self.config['lr'], weight_decay=self.config['weight_decay'])
+        elif self.config['optimizer'] == 'sgd':
+            optimizer = optim.SGD(self.parameters(), lr=self.config['lr'], weight_decay=self.config['weight_decay'], momentum=self.config['momentum'])
         
         if self.config['lr_scheduler'] == 'plateau':
             lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=self.config['scheduler_patience'], verbose=True, factor=self.config['scheduler_gamma'])
