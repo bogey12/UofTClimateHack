@@ -31,6 +31,7 @@ import torch.nn.functional as F
 
 
 BATCH_SIZE = 1
+NUM_IMAGES = 10
 SATELLITE_ZARR_PATH = "gs://public-datasets-eumetsat-solar-forecasting/satellite/EUMETSAT/SEVIRI_RSS/v3/eumetsat_seviri_hrv_uk.zarr"
 class PredictionTrainer(pl.LightningModule):
     def __init__(self, config, model=None, device=None, convert=False, data_range=1023, **args):
@@ -45,6 +46,7 @@ class PredictionTrainer(pl.LightningModule):
         self.config = config 
         self.args = args
         self.convert = convert
+        self.logged = sorted(random.sample(list(range(0, 200)), k=10))
         #self.truncated_bptt_steps = 6
 
     def forward(self, x):
@@ -146,8 +148,11 @@ class PredictionTrainer(pl.LightningModule):
 
         grid_expected = wandb.Image(torchvision.utils.make_grid([batch_targets[:, i] for i in range(self.config['outputs'])]))
         grid_predicted = wandb.Image(torchvision.utils.make_grid([predictions[:, i] for i in range(self.config['outputs'])]))
-        wandb.log({"predictions":grid_predicted, "expected": grid_expected})
         
+        if batch_idx == self.logged[0]:
+            wandb.log({"predictions":grid_predicted, "expected": grid_expected})
+            self.logged.pop(0)
+
         self.log('valid_loss', loss, prog_bar=True)
         #logging, comment if doesnt work
         # self.logger.experiment.add_images('predictions', grid, 0)
@@ -160,6 +165,8 @@ class PredictionTrainer(pl.LightningModule):
             avg_loss = torch.stack(outputs).mean()
             # print(avg_loss)
             wandb.log({'avg_loss':avg_loss})
+        self.logged = sorted(random.sample(list(range(0, 200)), k=10))
+
 
 def train_model(config, model_class, name, convert=False, **args):
     #add dataset to config  
