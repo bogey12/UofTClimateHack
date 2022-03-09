@@ -18,7 +18,7 @@ from models2.forecaster import Forecaster
 from models2.encoder import Encoder as Encoder2
 from models2.model import EF
 from models2.loss import Weighted_mse_mae
-from models2.convLSTM import ConvLSTM
+from models2.convLSTM import ConvLSTM as ConvLSTM2
 # from models2.net_params import return_params
 from models2.config import cfg
 from pytorch_msssim import MS_SSIM
@@ -71,11 +71,11 @@ class TempModel(nn.Module):
         ],
 
         [
-            ConvLSTM(input_channel=inner_size[0], num_filter=inner_size[1], b_h_w=(batch_size, HEIGHT//STRIDES_TOTAL[0], HEIGHT//STRIDES_TOTAL[0]),
+            ConvLSTM2(input_channel=inner_size[0], num_filter=inner_size[1], b_h_w=(batch_size, HEIGHT//STRIDES_TOTAL[0], HEIGHT//STRIDES_TOTAL[0]),
                     kernel_size=3, stride=1, padding=1),
-            ConvLSTM(input_channel=inner_size[2], num_filter=inner_size[2], b_h_w=(batch_size, HEIGHT//STRIDES_TOTAL[1], HEIGHT//STRIDES_TOTAL[1]),
+            ConvLSTM2(input_channel=inner_size[2], num_filter=inner_size[2], b_h_w=(batch_size, HEIGHT//STRIDES_TOTAL[1], HEIGHT//STRIDES_TOTAL[1]),
                     kernel_size=3, stride=1, padding=1),
-            ConvLSTM(input_channel=inner_size[2], num_filter=inner_size[2], b_h_w=(batch_size, HEIGHT//STRIDES_TOTAL[2], HEIGHT//STRIDES_TOTAL[2]),
+            ConvLSTM2(input_channel=inner_size[2], num_filter=inner_size[2], b_h_w=(batch_size, HEIGHT//STRIDES_TOTAL[2], HEIGHT//STRIDES_TOTAL[2]),
                     kernel_size=3, stride=1, padding=1),
         ]
         ]
@@ -93,11 +93,11 @@ class TempModel(nn.Module):
         ],
 
         [
-            ConvLSTM(input_channel=inner_size[2], num_filter=inner_size[2], b_h_w=(batch_size, HEIGHT//STRIDES_TOTAL[2], HEIGHT//STRIDES_TOTAL[2]),
+            ConvLSTM2(input_channel=inner_size[2], num_filter=inner_size[2], b_h_w=(batch_size, HEIGHT//STRIDES_TOTAL[2], HEIGHT//STRIDES_TOTAL[2]),
                     kernel_size=3, stride=1, padding=1),
-            ConvLSTM(input_channel=inner_size[2], num_filter=inner_size[2], b_h_w=(batch_size, HEIGHT//STRIDES_TOTAL[1], HEIGHT//STRIDES_TOTAL[1]),
+            ConvLSTM2(input_channel=inner_size[2], num_filter=inner_size[2], b_h_w=(batch_size, HEIGHT//STRIDES_TOTAL[1], HEIGHT//STRIDES_TOTAL[1]),
                     kernel_size=3, stride=1, padding=1),
-            ConvLSTM(input_channel=inner_size[1], num_filter=inner_size[1], b_h_w=(batch_size, HEIGHT//STRIDES_TOTAL[0], HEIGHT//STRIDES_TOTAL[0]),
+            ConvLSTM2(input_channel=inner_size[1], num_filter=inner_size[1], b_h_w=(batch_size, HEIGHT//STRIDES_TOTAL[0], HEIGHT//STRIDES_TOTAL[0]),
                     kernel_size=3, stride=1, padding=1),
         ]
         ]
