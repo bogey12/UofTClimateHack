@@ -1,6 +1,6 @@
-
+import argparse
 default_config = {
-    "separate": (32, 64, 128),
+    "separate": (32, 64, 128, 1),
     "n_layers": 1,
     "dropout": 0.2,
     "swap": False,
@@ -22,3 +22,18 @@ default_config = {
     "convert": False,
     "batch_size": 1
 }
+
+
+arg_names = ('type', 'default', 'dest')
+
+default_arguments = dict([(name, [f"--{name.replace('_', '')}", type(value), value, name.replace('_', '')]) for name, value in default_config.items()])
+default_arguments['separate'][1] = str
+default_arguments['separate'][2] = "32 64 128 1"
+default_arguments['inner_size'][1] = str
+default_arguments['inner_size'][2] = "8 32 64"
+
+
+def add_arguments(parser : argparse.ArgumentParser):
+    for _, v in default_arguments.items():
+        parser.add_argument(v[0], **dict(zip(arg_names, v[1:])))
+        
