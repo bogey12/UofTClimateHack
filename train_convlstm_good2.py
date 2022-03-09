@@ -1,4 +1,6 @@
 
+import functools
+import itertools
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -16,7 +18,8 @@ from models2.forecaster import Forecaster
 from models2.encoder import Encoder as Encoder2
 from models2.model import EF
 from models2.loss import Weighted_mse_mae
-from models2.net_params import return_params
+from models2.convLSTM import ConvLSTM
+# from models2.net_params import return_params
 from models2.config import cfg
 from pytorch_msssim import MS_SSIM
 from einops import rearrange
@@ -25,6 +28,7 @@ import pytorch_lightning as pl
 from training_utils import *
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 import argparse
+from collections import OrderedDict
 
 parser = argparse.ArgumentParser(description='Train skip conn UNet')
 parser.add_argument('--lr', required=True,
@@ -53,7 +57,51 @@ print(args)
 class TempModel(nn.Module):
     def __init__(self, config) -> None:
         super().__init__()
-        convlstm_encoder_params1, convlstm_forecaster_params1 = return_params(config['inner_size'])
+
+        inner_size = config['inner_size']
+        STRIDES = [2, 2, 2]
+        STRIDES_TOTAL = list(itertools.accumulate(STRIDES, lambda x, y: x*y))
+        HEIGHT, WIDTH = (128, 128)
+        batch_size = 1
+        convlstm_encoder_params1 = [
+        [
+            OrderedDict({'conv1_leaky_1': [1, inner_size[0], 7, STRIDES[0], 3]}),
+            OrderedDict({'conv2_leaky_1': [inner_size[1], inner_size[2], 5, STRIDES[1], 2]}),
+            OrderedDict({'conv3_leaky_1': [inner_size[2], inner_size[2], 3, STRIDES[2], 1]}),
+        ],
+
+        [
+            ConvLSTM(input_channel=inner_size[0], num_filter=inner_size[1], b_h_w=(batch_size, HEIGHT//STRIDES_TOTAL[0], HEIGHT//STRIDES_TOTAL[0]),
+                    kernel_size=3, stride=1, padding=1),
+            ConvLSTM(input_channel=inner_size[2], num_filter=inner_size[2], b_h_w=(batch_size, HEIGHT//STRIDES_TOTAL[1], HEIGHT//STRIDES_TOTAL[1]),
+                    kernel_size=3, stride=1, padding=1),
+            ConvLSTM(input_channel=inner_size[2], num_filter=inner_size[2], b_h_w=(batch_size, HEIGHT//STRIDES_TOTAL[2], HEIGHT//STRIDES_TOTAL[2]),
+                    kernel_size=3, stride=1, padding=1),
+        ]
+        ]
+
+
+        convlstm_forecaster_params1 = [
+        [
+            OrderedDict({'deconv1_leaky_1': [inner_size[2], inner_size[2], 4, STRIDES[2], 1]}),
+            OrderedDict({'deconv2_leaky_1': [inner_size[2], inner_size[1], 6, STRIDES[1], 2]}),
+            OrderedDict({
+                'deconv3_leaky_1': [inner_size[1], inner_size[0], 8, STRIDES[0], 3],
+                'conv3_leaky_2': [inner_size[0], inner_size[0], 3, 2, 1],
+                'conv3_3': [inner_size[0], 1, 1, 1, 0]
+            }),
+        ],
+
+        [
+            ConvLSTM(input_channel=inner_size[2], num_filter=inner_size[2], b_h_w=(batch_size, HEIGHT//STRIDES_TOTAL[2], HEIGHT//STRIDES_TOTAL[2]),
+                    kernel_size=3, stride=1, padding=1),
+            ConvLSTM(input_channel=inner_size[2], num_filter=inner_size[2], b_h_w=(batch_size, HEIGHT//STRIDES_TOTAL[1], HEIGHT//STRIDES_TOTAL[1]),
+                    kernel_size=3, stride=1, padding=1),
+            ConvLSTM(input_channel=inner_size[1], num_filter=inner_size[1], b_h_w=(batch_size, HEIGHT//STRIDES_TOTAL[0], HEIGHT//STRIDES_TOTAL[0]),
+                    kernel_size=3, stride=1, padding=1),
+        ]
+        ]
+        # convlstm_encoder_params1, convlstm_forecaster_params1 = return_params(config['inner_size'])
         self.encoder = Encoder2(convlstm_encoder_params1[0], convlstm_encoder_params1[1])
         self.forecaster = Forecaster(convlstm_forecaster_params1[0], convlstm_forecaster_params1[1])
         # self.ef = EF(encoder, forecaster)
