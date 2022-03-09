@@ -52,7 +52,10 @@ class PredictionTrainer(pl.LightningModule):
         #self.truncated_bptt_steps = 6
 
     def forward(self, x):
-        return self.model(x, **self.args)
+        x, extra = preprocessing(self.config, x)
+        x = self.model(x, **self.args)
+        x = postprocessing(self.config, x, extra)
+        return x
 
     def configure_optimizers(self):
         decay = 0 if 'weight_decay' not in self.config else self.config['weight_decay']
@@ -62,12 +65,12 @@ class PredictionTrainer(pl.LightningModule):
         return {'optimizer': optimizer, 'lr_scheduler': lr_scheduler, 'monitor':'valid_loss'}
         # return optimizer
 
+
+
     def training_step(self, training_batch, batch_idx):
         # batch_coordinates, batch_features, batch_targets = training_batch
         batch_features, batch_targets = training_batch[-2:]
-        batch_features, extra = preprocessing(self.config, batch_features)
         predictions = self.model(batch_features, **self.args)
-        predictions = postprocessing(self.config, predictions, extra)
         # if self.config['optflow']:
         #     predictions = rearrange(predictions, 'b (t c) h w -> b t h w c', c=2)
         # batch_targets /= self.data_range
@@ -85,11 +88,7 @@ class PredictionTrainer(pl.LightningModule):
     def validation_step(self, training_batch, batch_idx):
         # batch_coordinates, batch_features, batch_targets = training_batch
         batch_features, batch_targets = training_batch[-2:]
-        batch_features, extra = self.preprocessing(batch_features)
         predictions = self.model(batch_features, **self.args)
-        if self.convert:
-            predictions = rearrange(predictions, 'b t c h w -> b (t c) h w')
-        predictions = self.postprocessing(predictions, extra)
         # if self.config['opt_flow']:
         #     predictions = rearrange(predictions, 'b (t c) h w -> b t h w c', c=2)
         # target = torch.tensor(batch_targets).view(1, 24, 64, 64)
@@ -122,7 +121,7 @@ class PredictionTrainer(pl.LightningModule):
         self.logged = sorted(random.sample(list(range(0, 200)), k=10))
 
 
-def train_model(config, model_class, name, convert=False, **args):
+def train_model(config, model_class, name, **args):
     #add dataset to config  
     #add epochs to config  
     #add name to config
@@ -161,7 +160,7 @@ def train_model(config, model_class, name, convert=False, **args):
         mode="min",
         save_weights_only=True
     )
-    training_model = PredictionTrainer(config, model=model_class, device=device, convert=convert)
+    training_model = PredictionTrainer(config, model=model_class, device=device)
     early_stop = EarlyStopping('valid_loss', patience=config['patience'], mode='min')
     trainer = pl.Trainer(gpus=1, precision=32, max_epochs=config['epochs'], callbacks=[early_stop, checkpoint_callback], accumulate_grad_batches=7, gradient_clip_val=50.0, logger=wandb_logger, **args)#, detect_anomaly=True)#, overfit_batches=1)#, benchmark=True)#, limit_train_batches=1)
     trainer.fit(training_model, training_dl, validation_dl)
