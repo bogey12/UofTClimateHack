@@ -127,7 +127,7 @@ def train_model(rawargs, model_class, name, **args):
     config = dict([(k, rawargs[k.replace('_', '')] or v) for k, v in default_config.items()])
 
     random_str = ''.join(random.choices(ascii_lowercase + digits, k=5))
-    wandb.init(project="ClimateHack", entity="loluwot", name=f'{name}-{random_str}')
+    wandb.init(project="ClimateHack", entity="loluwot", name=f'{name}-{random_str}', group=name)
     wandb_logger = WandbLogger(project="ClimateHack")
     dataset = xr.open_dataset(
         SATELLITE_ZARR_PATH, 
