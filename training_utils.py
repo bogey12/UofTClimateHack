@@ -36,11 +36,9 @@ from string import ascii_lowercase, digits
 NUM_IMAGES = 10
 SATELLITE_ZARR_PATH = "gs://public-datasets-eumetsat-solar-forecasting/satellite/EUMETSAT/SEVIRI_RSS/v3/eumetsat_seviri_hrv_uk.zarr"
 class PredictionTrainer(pl.LightningModule):
-    def __init__(self, rawargs, model=None, device=None, convert=False, data_range=1023, **args):
+    def __init__(self, config, model=None, device=None, convert=False, data_range=1023, **args):
         super().__init__()
-        rawargs = defaultdict(lambda: None, rawargs)
-        config = dict([(k, rawargs[k.replace('_', '')] or v) for k, v in default_config.items()])
-
+        
         self.model = model(config)
         if config['criterion'] == 'mse':
             self.criterion = nn.MSELoss()
@@ -61,12 +59,13 @@ class PredictionTrainer(pl.LightningModule):
         return x
 
     def configure_optimizers(self):
-        decay = 0 if 'weight_decay' not in self.config else self.config['weight_decay']
-        optimizer = optim.Adam(self.parameters(), lr=self.config['lr'], weight_decay=decay)
+        
+        optimizer = optim.Adam(self.parameters(), lr=self.config['lr'], weight_decay=self.config['weight_decay'])
+        
         if self.config['lr_scheduler'] == 'plateau':
-            lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, verbose=True, factor=0.7)
+            lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=self.config['scheduler_patience'], verbose=True, factor=self.config['scheduler_gamma'])
         elif self.config['lr_scheduler'] == 'cyclic':
-            lr_scheduler = optim.lr_scheduler.CyclicLR(optimizer, base_lr=self.config['lr'], max_lr=0.1, cycle_momentum=False, verbose=True)
+            lr_scheduler = optim.lr_scheduler.CyclicLR(optimizer, base_lr=self.config['lr'], max_lr=self.config['scheduler_max'], cycle_momentum=False, verbose=True)
         return {'optimizer': optimizer, 'lr_scheduler': lr_scheduler, 'monitor':'valid_loss'}
         # return optimizer
 
@@ -120,6 +119,10 @@ def train_model(config, model_class, name, **args):
     #add epochs to config  
     #add name to config
     #add patience to config
+
+    rawargs = defaultdict(lambda: None, rawargs)
+    config = dict([(k, rawargs[k.replace('_', '')] or v) for k, v in default_config.items()])
+
     random_str = ''.join(random.choices(ascii_lowercase + digits, k=5))
     wandb.init(project="ClimateHack", entity="loluwot", name=f'{name}-{random_str}')
     wandb_logger = WandbLogger(project="ClimateHack")
