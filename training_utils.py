@@ -36,8 +36,11 @@ BATCH_SIZE = 1
 NUM_IMAGES = 10
 SATELLITE_ZARR_PATH = "gs://public-datasets-eumetsat-solar-forecasting/satellite/EUMETSAT/SEVIRI_RSS/v3/eumetsat_seviri_hrv_uk.zarr"
 class PredictionTrainer(pl.LightningModule):
-    def __init__(self, config, model=None, device=None, convert=False, data_range=1023, **args):
+    def __init__(self, rawargs, model=None, device=None, convert=False, data_range=1023, **args):
         super().__init__()
+        rawargs = defaultdict(lambda: None, rawargs)
+        config = dict([(k, rawargs[k.replace('_', '')] or v) for k, v in default_config.items()])
+
         self.model = model(config)
         if config['criterion'] == 'mse':
             self.criterion = nn.MSELoss()
@@ -65,15 +68,10 @@ class PredictionTrainer(pl.LightningModule):
         return {'optimizer': optimizer, 'lr_scheduler': lr_scheduler, 'monitor':'valid_loss'}
         # return optimizer
 
-
-
     def training_step(self, training_batch, batch_idx):
         # batch_coordinates, batch_features, batch_targets = training_batch
         batch_features, batch_targets = training_batch[-2:]
-        predictions = self.model(batch_features, **self.args)
-        # if self.config['optflow']:
-        #     predictions = rearrange(predictions, 'b (t c) h w -> b t h w c', c=2)
-        # batch_targets /= self.data_range
+        predictions = self.forward(batch_features, **self.args)
         # print(predictions)
         if not self.config['opt_flow']:
             loss = self.criterion(predictions.unsqueeze(dim=2), batch_targets[:,:24].unsqueeze(dim=2))
@@ -88,10 +86,8 @@ class PredictionTrainer(pl.LightningModule):
     def validation_step(self, training_batch, batch_idx):
         # batch_coordinates, batch_features, batch_targets = training_batch
         batch_features, batch_targets = training_batch[-2:]
-        predictions = self.model(batch_features, **self.args)
-        # if self.config['opt_flow']:
-        #     predictions = rearrange(predictions, 'b (t c) h w -> b t h w c', c=2)
-        # target = torch.tensor(batch_targets).view(1, 24, 64, 64)
+        predictions = self.forward(batch_features, **self.args)
+
         if not self.config['opt_flow']:
             loss = self.criterion(predictions.unsqueeze(dim=2), batch_targets[:,:self.config['outputs']].unsqueeze(dim=2))
         else:
@@ -99,7 +95,6 @@ class PredictionTrainer(pl.LightningModule):
             # target = rearrange(batch_targets[:,:predictions.shape[1]], 'b t h w c -> b (t c) h w')
             loss = self.criterion(predictions, batch_targets[:,:predictions.shape[1]])
 
-        
         if len(self.logged) > 0 and batch_idx == self.logged[0]:
             grid_expected = wandb.Image(torchvision.utils.make_grid([batch_targets[:, i] for i in range(self.config['outputs'])]))
             grid_predicted = wandb.Image(torchvision.utils.make_grid([predictions[:, i] for i in range(self.config['outputs'])]))
@@ -107,9 +102,6 @@ class PredictionTrainer(pl.LightningModule):
             self.logged.pop(0)
 
         self.log('valid_loss', loss, prog_bar=True)
-        #logging, comment if doesnt work
-        # self.logger.experiment.add_images('predictions', grid, 0)
-
         return loss
 
     def validation_epoch_end(self, outputs):
