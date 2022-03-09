@@ -27,7 +27,8 @@ default_config = {
     "scheduler_max": 0.1,
     "optimizer": "adam",
     "momentum": 0.7,
-    "gpu": 1
+    "gpu": 1,
+    "accumulate": 7
 }
 
 
