@@ -30,7 +30,7 @@ import math
 import torch.nn.functional as F
 from training_config import *
 from processing_utils import *
-
+from string import ascii_lowercase, digits
 
 BATCH_SIZE = 1
 NUM_IMAGES = 10
@@ -118,7 +118,8 @@ def train_model(config, model_class, name, **args):
     #add epochs to config  
     #add name to config
     #add patience to config
-    wandb.init(project="ClimateHack", entity="loluwot")
+    random_str = ''.join(random.choices(ascii_lowercase + digits, k=5))
+    wandb.init(project="ClimateHack", entity="loluwot", name=f'{name}-{random_str}')
     wandb_logger = WandbLogger(project="ClimateHack")
     dataset = xr.open_dataset(
         SATELLITE_ZARR_PATH, 
