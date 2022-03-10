@@ -124,7 +124,7 @@ def train_model(rawargs, model_class, name, **args):
     #add patience to config
 
     rawargs = defaultdict(lambda: None, rawargs)
-    config = dict([(k, rawargs[k.replace('_', '')] or v) for k, v in default_config.items()])
+    config = dict([(k, rawargs[k.replace('_', '')] if rawargs[k.replace('_', '')] is not None else v) for k, v in default_config.items()])
     random_str = ''.join(random.choices(ascii_lowercase + digits, k=5))
 
     if config['sweep']:
@@ -133,7 +133,7 @@ def train_model(rawargs, model_class, name, **args):
         wandb.init(config=config, project="ClimateHack", entity="loluwot", name=f'{name}-{random_str}', group=name)
 
     config = {**config, **wandb.config}
-    
+
     wandb_logger = True if config['sweep'] else WandbLogger(project="ClimateHack")
     dataset = xr.open_dataset(
         SATELLITE_ZARR_PATH, 
