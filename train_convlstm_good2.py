@@ -55,8 +55,14 @@ class TempModel(nn.Module):
         x = rearrange(x, 't b c h w -> b (t c) h w')
         return x
 
+
+
 if __name__ == '__main__':
     args['innersize'] = list(map(int, args['innersize'].split()))
-    train_model(args, TempModel, 'convlstm-2')
-  
+    def train():
+        train_model(args, TempModel, 'convlstm-2')
+    if args['sweep']:
+        wandb.agent(args['sweepid'], function=train, count=args['sweepruns'])
+    else:
+        train()
     

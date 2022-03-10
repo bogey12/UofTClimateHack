@@ -30,6 +30,9 @@ default_config = {
     "gpu": 1,
     "accumulate": 7,
     "checkpoint": "",
+    "sweep": False,
+    "sweepid": "",
+    "sweepruns": 1
 }
 
 
