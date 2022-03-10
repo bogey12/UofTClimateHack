@@ -31,6 +31,10 @@ import argparse
 from collections import OrderedDict
 from training_config import add_arguments
 
+import os
+os.environ["WANDB_CONSOLE"] = "off"
+
+
 parser = argparse.ArgumentParser(description='Train skip conn UNet')
 
 add_arguments(parser)
@@ -56,13 +60,11 @@ class TempModel(nn.Module):
         return x
 
 
-
-if __name__ == '__main__':
-    args['innersize'] = list(map(int, args['innersize'].split()))
-    def train():
-        train_model(args, TempModel, 'convlstm-2')
-    if args['sweep']:
-        wandb.agent(args['sweepid'], function=train, count=args['sweepruns'])
-    else:
-        train()
+args['innersize'] = list(map(int, args['innersize'].split()))
+def train():
+    train_model(args, TempModel, 'convlstm-2')
+if args['sweep']:
+    wandb.agent(args['sweepid'], function=train, count=args['sweepruns'], entity="loluwot", project="ClimateHack")
+else:
+    train()
     
