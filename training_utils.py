@@ -128,11 +128,12 @@ def train_model(rawargs, model_class, name, **args):
     random_str = ''.join(random.choices(ascii_lowercase + digits, k=5))
 
     if config['sweep']:
-        wandb.init(config=config)
+        wandb.init(config=config, project="ClimateHack", entity="loluwot")
     else:
         wandb.init(config=config, project="ClimateHack", entity="loluwot", name=f'{name}-{random_str}', group=name)
 
-    config = wandb.config
+    config = {**config, **wandb.config}
+    
     wandb_logger = True if config['sweep'] else WandbLogger(project="ClimateHack")
     dataset = xr.open_dataset(
         SATELLITE_ZARR_PATH, 
@@ -172,9 +173,9 @@ def train_model(rawargs, model_class, name, **args):
         training_model = PredictionTrainer(config, model=model_class, device=device)
     early_stop = EarlyStopping('valid_loss', patience=config['patience'], mode='min')
     if config['gpu'] != 1:
-        trainer = pl.Trainer(gpus=config['gpu'], precision=32, max_epochs=config['epochs'], callbacks=[early_stop, checkpoint_callback], accumulate_grad_batches=config['accumulate']//config['batch_size'], gradient_clip_val=50.0, strategy="ddp", logger=wandb_logger,**args)#, detect_anomaly=True)#, overfit_batches=1)#, benchmark=True)#, limit_train_batches=1)
-    else:
-        trainer = pl.Trainer(gpus=config['gpu'], precision=32, max_epochs=config['epochs'], callbacks=[early_stop, checkpoint_callback], accumulate_grad_batches=config['accumulate']//config['batch_size'], gradient_clip_val=50.0, logger=wandb_logger, **args)#, detect_anomaly=True)#, overfit_batches=1)#, benchmark=True)#, limit_train_batches=1)
+        args['strategy'] = "ddp"#, detect_anomaly=True)#, overfit_batches=1)#, benchmark=True)#, limit_train_batches=1)
+    
+    trainer = pl.Trainer(gpus=config['gpu'], precision=32, max_epochs=config['epochs'], callbacks=[early_stop, checkpoint_callback], accumulate_grad_batches=config['accumulate']//config['batch_size'], gradient_clip_val=50.0, logger=wandb_logger, **args)#, detect_anomaly=True)#, overfit_batches=1)#, benchmark=True)#, limit_train_batches=1)
     trainer.fit(training_model, training_dl, validation_dl)
     torch.save(trainer.model.state_dict(), f'{name}.pt')
 
