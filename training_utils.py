@@ -104,7 +104,7 @@ class PredictionTrainer(pl.LightningModule):
             grid_predicted = wandb.Image(torchvision.utils.make_grid([predictions[:1, i] for i in range(self.config['outputs'])]))
             wandb.log({"predictions":grid_predicted, "expected": grid_expected})
             self.logged.pop(0)
-
+        wandb.log({'valid_loss':loss})
         self.log('valid_loss', loss, prog_bar=True, sync_dist=True)
         return loss
 
@@ -126,7 +126,12 @@ def train_model(rawargs, model_class, name, **args):
     rawargs = defaultdict(lambda: None, rawargs)
     config = dict([(k, rawargs[k.replace('_', '')] or v) for k, v in default_config.items()])
     random_str = ''.join(random.choices(ascii_lowercase + digits, k=5))
-    wandb.init(config=config, project="ClimateHack", entity="loluwot", name=f'{name}-{random_str}', group=name)
+
+    if config['sweep']:
+        wandb.init(config=config)
+    else:
+        wandb.init(config=config, project="ClimateHack", entity="loluwot", name=f'{name}-{random_str}', group=name)
+        
     config = wandb.config
     wandb_logger = WandbLogger(project="ClimateHack")
     dataset = xr.open_dataset(
