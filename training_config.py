@@ -32,7 +32,8 @@ default_config = {
     "checkpoint": "",
     "sweep": False,
     "sweepid": "",
-    "sweepruns": 1
+    "sweepruns": 1,
+    "downsample": "stride" #"", stride, maxpool
 }
 
 

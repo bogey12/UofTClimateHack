@@ -51,10 +51,16 @@ class PredictionTrainer(pl.LightningModule):
         self.convert = convert
         self.logged = sorted(random.sample(list(range(0, 200)), k=10))
         self.lr = None
+        self.downconv = nn.Identity()
+        if config['downsample']:
+            module_mapping = {"stride": nn.Conv2d, "maxpool": nn.MaxPool2d}
+            self.downconv = module_mapping[config['downsample']](config['inputs'], config['inputs'], 3, 2) #downsample by 1/2
+
         #self.truncated_bptt_steps = 6
 
     def forward(self, x):
         x, extra = preprocessing(self.config, x)
+        x = self.downconv(x) #remove if doesnt work
         x = self.model(x, **self.args)
         x = postprocessing(self.config, x, extra)
         return x
