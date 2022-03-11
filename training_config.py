@@ -33,7 +33,9 @@ default_config = {
     "sweep": False,
     "sweepid": "",
     "sweepruns": 1,
-    "downsample": "stride" #"", stride, maxpool
+    "downsample": "", #"", stride, maxpool
+    "hiddensize": 64,
+    "lstmlayers": 4
 }
 
 
