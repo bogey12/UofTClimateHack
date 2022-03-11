@@ -53,4 +53,9 @@ class TempModel(nn.Module):
 
 if __name__ == '__main__':
     args['innersize'] = list(map(int, args['innersize'].split()))
-    train_model(args, TempModel, 'trajgru-1')
+    def train():
+        train_model(args, TempModel, 'trajgru-1')
+    if args['sweep']:
+        wandb.agent(args['sweepid'], function=train, count=args['sweepruns'], entity="loluwot", project="ClimateHack")
+    else:
+        train()
