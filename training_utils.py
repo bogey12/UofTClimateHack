@@ -120,6 +120,7 @@ class PredictionTrainer(pl.LightningModule):
             avg_loss = torch.stack(outputs).mean()
             # print(avg_loss)
             wandb.log({'avg_loss':avg_loss})
+            self.log('avg_loss', avg_loss)
         self.logged = sorted(random.sample(list(range(0, 200)), k=10))
 
 
@@ -166,7 +167,7 @@ def train_model(rawargs, model_class, name, **args):
     training_dl, validation_dl = [DataLoader(ds, batch_size=config['batch_size'], num_workers=0, pin_memory=True) for ds in [ch_training, ch_validation]]
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     checkpoint_callback = ModelCheckpoint(
-        monitor="valid_loss",
+        monitor= "avg_loss", #"valid_loss",
         dirpath="submission/",
         filename= name + "-{epoch:02d}-{valid_loss:.4f}",
         save_top_k=3,
