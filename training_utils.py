@@ -180,7 +180,7 @@ def train_model(rawargs, model_class, name, **args):
 
     config = {**config, **wandb.config}
 
-    wandb_logger = True if config['sweep'] else WandbLogger(project="ClimateHack")
+    wandb_logger = True# if config['sweep'] else WandbLogger(project="ClimateHack")
     dataset = xr.open_dataset(
         SATELLITE_ZARR_PATH, 
         engine="zarr",
@@ -206,7 +206,7 @@ def train_model(rawargs, model_class, name, **args):
     training_dl, validation_dl = [DataLoader(ds, batch_size=config['batch_size'], num_workers=0, pin_memory=True) for ds in [ch_training, ch_validation]]
     device = "cuda" if torch.cuda.is_available() else "cpu"
     checkpoint_callback = ModelCheckpoint(
-        monitor= "avg_loss", #"valid_loss",
+        monitor = "valid_loss",
         dirpath="submission/",
         filename= name + "-{epoch:02d}-{valid_loss:.4f}",
         save_top_k=3,
