@@ -43,6 +43,7 @@ default_config = {
     'pretrained_model': '', 
     'num_hidden': '64,64,64,64', 
     'filter_size': 5, 
+    'dataset_slice': -1, 
     'stride': 1, 'patch_size': 4, 'layer_norm': 1, 'decouple_beta': 0.1, 'reverse_scheduled_sampling': 0, 'r_sampling_step_1': 25000, 'r_sampling_step_2': 
 50000, 'r_exp_alpha': 5000, 'scheduled_sampling': 1, 'sampling_stop_iter': 50000, 'sampling_start_value': 1.0, 'sampling_changing_rate': 2e-05, 'reverse_input': 1, 'max_iterations': 80000, 'display_interval': 100, 
 'test_interval': 5000, 'snapshot_interval': 5000, 'num_save_samples': 10, 'visual': 0, 'visual_path': './decoupling_visual', 'injection_action': 'concat', 'conv_on_input': 0, 'res_on_conv': 0, 'num_action_ch': 4

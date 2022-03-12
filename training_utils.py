@@ -146,9 +146,8 @@ class PredictionTrainer(pl.LightningModule):
             wandb.log({"predictions":grid_predicted, "expected": grid_expected})
             self.logged.pop(0)
 
-
-        wandb.log({'valid_loss':loss})
         self.log('valid_loss', loss, prog_bar=True, sync_dist=True)
+        wandb.log({'valid_loss':loss})
         return loss
 
     def validation_epoch_end(self, outputs):
@@ -156,8 +155,8 @@ class PredictionTrainer(pl.LightningModule):
             # print(outputs)      
             avg_loss = torch.stack(outputs).mean()
             # print(avg_loss)
-            wandb.log({'avg_loss':avg_loss})
             self.log('avg_loss', avg_loss)
+            wandb.log({'avg_loss':avg_loss})
         self.logged = sorted(random.sample(list(range(0, 200)), k=10))
 
 
@@ -195,6 +194,10 @@ def train_model(rawargs, model_class, name, **args):
     tot_points = len(datapoints) 
     validation_size = len(valid_datapoints)
     datapoints = datapoints.reshape((tot_points, 2))
+    sl = config['dataset_slice']
+    if sl < 0:
+        sl += tot_points + 1
+    datapoints = datapoints[:sl]
     valid_datapoints = valid_datapoints.reshape((validation_size, 2))
     training = datapoints.tolist()
     testing = valid_datapoints.tolist()
