@@ -207,8 +207,8 @@ def train_model(rawargs, model_class, name, **args):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     checkpoint_callback = ModelCheckpoint(
         monitor = "valid_loss",
-        dirpath="submission/",
-        filename= name + "-{epoch:02d}-{valid_loss:.4f}",
+        dirpath = "submission/",
+        filename = name + "-{epoch:02d}-{valid_loss:.4f}",
         save_top_k=3,
         mode="min",
         save_weights_only=True
@@ -221,7 +221,7 @@ def train_model(rawargs, model_class, name, **args):
     if config['gpu'] != 1:
         args['strategy'] = "ddp"#, detect_anomaly=True)#, overfit_batches=1)#, benchmark=True)#, limit_train_batches=1)
     
-    trainer = pl.Trainer(gpus=config['gpu'], precision=32, max_epochs=config['epochs'], callbacks=[early_stop, checkpoint_callback], accumulate_grad_batches=max(1, config['accumulate']//config['batch_size']), gradient_clip_val=50.0, logger=wandb_logger, detect_anomaly = True, **args)#, detect_anomaly=True)#, overfit_batches=1)#, benchmark=True)#, limit_train_batches=1)
+    trainer = pl.Trainer(gpus=config['gpu'], precision=32, max_epochs=config['epochs'], callbacks=[early_stop, checkpoint_callback], accumulate_grad_batches=max(1, config['accumulate']//config['batch_size']), gradient_clip_val=50.0, logger=wandb_logger, **args)#, detect_anomaly=True)#, overfit_batches=1)#, benchmark=True)#, limit_train_batches=1)
     trainer.fit(training_model, training_dl, validation_dl)
     torch.save(trainer.model.state_dict(), f'{name}.pt')
 
