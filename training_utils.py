@@ -31,7 +31,7 @@ import torch.nn.functional as F
 from training_config import *
 from processing_utils import *
 from string import ascii_lowercase, digits
-WANDB_DISABLED = True
+WANDB_DISABLED = False
 # BATCH_SIZE = 1
 NUM_IMAGES = 10
 SATELLITE_ZARR_PATH = "gs://public-datasets-eumetsat-solar-forecasting/satellite/EUMETSAT/SEVIRI_RSS/v3/eumetsat_seviri_hrv_uk.zarr"
