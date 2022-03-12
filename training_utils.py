@@ -31,22 +31,27 @@ import torch.nn.functional as F
 from training_config import *
 from processing_utils import *
 from string import ascii_lowercase, digits
-
+WANDB_DISABLED = True
 # BATCH_SIZE = 1
 NUM_IMAGES = 10
 SATELLITE_ZARR_PATH = "gs://public-datasets-eumetsat-solar-forecasting/satellite/EUMETSAT/SEVIRI_RSS/v3/eumetsat_seviri_hrv_uk.zarr"
 class PredictionTrainer(pl.LightningModule):
     def __init__(self, config, model=None, device=None, convert=False, data_range=1023, **args):
         super().__init__()
-        
+        config['device'] = device
         self.model = model(config)
+        self.model = self.model.to(device)
         if config['criterion'] == 'mse':
             self.criterion = nn.MSELoss()
         elif config['criterion'] == 'msssim':
-            self.criterion = MS_SSIMLoss(channels=config['outputs'], data_range=data_range)
+            channels = config['outputs']
+            if config['model_name'] == 'predrnn':
+                channels += config['inputs'] - 1
+            self.criterion = MS_SSIMLoss(channels=channels, data_range=data_range)
 
         # self.criterion = nn.MSELoss()
         self.config = config 
+        # self.config['device'] = device
         self.args = args
         self.convert = convert
         self.logged = sorted(random.sample(list(range(0, 200)), k=10))
@@ -54,15 +59,19 @@ class PredictionTrainer(pl.LightningModule):
         self.downconv = nn.Identity()
         if config['downsample']:
             module_mapping = {"stride": nn.Conv2d, "maxpool": nn.MaxPool2d}
-            self.downconv = module_mapping[config['downsample']](config['inputs'], config['inputs'], 3, 2) #downsample by 1/2
+            self.downconv = module_mapping[config['downsample']](config['inputs'], config['inputs'], 3, stride=2, padding=1) #downsample by 1/2
 
         #self.truncated_bptt_steps = 6
 
     def forward(self, x):
-        x, extra = preprocessing(self.config, x)
-        x = self.downconv(x) #remove if doesnt work
-        x = self.model(x, **self.args)
+        y, extra = preprocessing(self.config, x)
+        # print(x.shape)
+        x = self.model(y, **self.args)
+        if self.config['model_name'] == 'predrnn':
+            x, loss = x
         x = postprocessing(self.config, x, extra)
+        if self.config['model_name'] == 'predrnn':
+            return x, loss
         return x
 
     def configure_optimizers(self):
@@ -81,7 +90,11 @@ class PredictionTrainer(pl.LightningModule):
     def training_step(self, training_batch, batch_idx):
         # batch_coordinates, batch_features, batch_targets = training_batch
         batch_features, batch_targets = training_batch[-2:]
-        predictions = self.forward(batch_features, **self.args)
+        features = batch_features
+        features = self.downconv(features)
+        if self.config['model_name'] == 'predrnn':
+            features = torch.cat((features, batch_targets), dim=1).clone() #b (c t) h w
+        predictions = self.forward(features, **self.args)
         # print(predictions)
         if self.config['opt_flow']:
             predictions = rearrange(predictions, 'b (t c) h w -> b t h w c', c=2)
@@ -90,7 +103,9 @@ class PredictionTrainer(pl.LightningModule):
         
         elif self.config['model_name'] == 'predrnn':
             predictions, decouple_loss = predictions
-            net_input = torch.cat((batch_features, batch_targets), dim=1).unsqueeze(dim=2)[:, 1:]
+            # print('PREDICTIONS:', predictions.unsqueeze(dim=2).shape)
+            net_input = features.unsqueeze(dim=2)[:, 1:]
+            # print('NETINPUT:', net_input.shape)
             loss = decouple_loss + self.criterion(predictions.unsqueeze(dim=2), net_input)
         
         else:
@@ -100,13 +115,16 @@ class PredictionTrainer(pl.LightningModule):
         self.log('train_loss', loss, prog_bar=True, sync_dist=True)
         return loss
 
-    #fix for PREDRNN
 
     def validation_step(self, training_batch, batch_idx):
         # batch_coordinates, batch_features, batch_targets = training_batch
         batch_features, batch_targets = training_batch[-2:]
-        predictions = self.forward(batch_features, **self.args)
-
+        features = batch_features
+        features = self.downconv(features)
+        if self.config['model_name'] == 'predrnn':
+            features = torch.cat((features, batch_targets), dim=1) #b (c t) h w
+        predictions = self.forward(features, **self.args)
+        # print(predictions)
         if self.config['opt_flow']:
             predictions = rearrange(predictions, 'b (t c) h w -> b t h w c', c=2)
             # target = rearrange(batch_targets[:,:predictions.shape[1]], 'b t h w c -> b (t c) h w')
@@ -114,11 +132,13 @@ class PredictionTrainer(pl.LightningModule):
         
         elif self.config['model_name'] == 'predrnn':
             predictions, decouple_loss = predictions
-            net_input = torch.cat((batch_features, batch_targets), dim=1).unsqueeze(dim=2)[:, 1:]
+            # print('PREDICTIONS:', predictions.unsqueeze(dim=2).shape)
+            net_input = features.unsqueeze(dim=2)[:, 1:]
+            # print('NETINPUT:', net_input.shape)
             loss = decouple_loss + self.criterion(predictions.unsqueeze(dim=2), net_input)
         
         else:
-            loss = self.criterion(predictions.unsqueeze(dim=2), batch_targets[:,:self.config['outputs']].unsqueeze(dim=2))
+            loss = self.criterion(predictions.unsqueeze(dim=2), batch_targets[:,:24].unsqueeze(dim=2))
 
         if len(self.logged) > 0 and batch_idx == self.logged[0]:
             grid_expected = wandb.Image(torchvision.utils.make_grid([batch_targets[:1, i] for i in range(self.config['outputs'])]))
@@ -152,9 +172,11 @@ def train_model(rawargs, model_class, name, **args):
     random_str = ''.join(random.choices(ascii_lowercase + digits, k=5))
 
     if config['sweep']:
-        wandb.init(config=config, project="ClimateHack", entity="loluwot")
+        # wandb.init(config=config, project="ClimateHack", entity="loluwot")
+        wandb.init(config=config, project="ClimateHack", entity="loluwot", mode='disabled' if WANDB_DISABLED else None)
     else:
-        wandb.init(config=config, project="ClimateHack", entity="loluwot", name=f'{name}-{random_str}', group=name)
+        # wandb.init(config=config, project="ClimateHack", entity="loluwot", name=f'{name}-{random_str}', group=name)
+        wandb.init(config=config, project="ClimateHack", entity="loluwot", name=f'{name}-{random_str}', group=name,  mode='disabled' if WANDB_DISABLED else None)
 
     config = {**config, **wandb.config}
 
@@ -182,7 +204,7 @@ def train_model(rawargs, model_class, name, **args):
     ch_validation = ClimateHackDataset(validation_ds, crops_per_slice=5, day_limit=3, outputs=config['outputs'])#, cache=False)
     ch_validation.cached_items = testing
     training_dl, validation_dl = [DataLoader(ds, batch_size=config['batch_size'], num_workers=0, pin_memory=True) for ds in [ch_training, ch_validation]]
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     checkpoint_callback = ModelCheckpoint(
         monitor= "avg_loss", #"valid_loss",
         dirpath="submission/",
@@ -199,7 +221,7 @@ def train_model(rawargs, model_class, name, **args):
     if config['gpu'] != 1:
         args['strategy'] = "ddp"#, detect_anomaly=True)#, overfit_batches=1)#, benchmark=True)#, limit_train_batches=1)
     
-    trainer = pl.Trainer(gpus=config['gpu'], precision=32, max_epochs=config['epochs'], callbacks=[early_stop, checkpoint_callback], accumulate_grad_batches=max(1, config['accumulate']//config['batch_size']), gradient_clip_val=50.0, logger=wandb_logger, **args)#, detect_anomaly=True)#, overfit_batches=1)#, benchmark=True)#, limit_train_batches=1)
+    trainer = pl.Trainer(gpus=config['gpu'], precision=32, max_epochs=config['epochs'], callbacks=[early_stop, checkpoint_callback], accumulate_grad_batches=max(1, config['accumulate']//config['batch_size']), gradient_clip_val=50.0, logger=wandb_logger, detect_anomaly = True, **args)#, detect_anomaly=True)#, overfit_batches=1)#, benchmark=True)#, limit_train_batches=1)
     trainer.fit(training_model, training_dl, validation_dl)
     torch.save(trainer.model.state_dict(), f'{name}.pt')
 

@@ -11,8 +11,11 @@ def preprocessing(config, batch_features):
         batch_features = rearrange(batch_features, 'b (t c) h w -> b t c h w', c=1)
     if config['normalize']:
         if config['local_norm']:
-            MEAN = torch.mean(batch_features)
-            STD = torch.std(batch_features)
+            MEAN = torch.mean(batch_features).detach()
+            # print('FEATURE', batch_features.shape)
+            # print('FEATURE type', batch_features.dtype)
+            # print('STD', torch.std(batch_features))
+            STD = torch.std(batch_features).detach()
         if config['normalize'] == 'standardize':
             batch_features -= MEAN
             batch_features /= STD
@@ -26,6 +29,7 @@ def preprocessing(config, batch_features):
     return batch_features, {'MEAN':MEAN, 'STD':STD, 'mi1':mi1, 'ma1':ma1}
 
 def postprocessing(config, predictions, extra):
+    # print('POST PROCESSING:', predictions.shape)
     MEAN = extra['MEAN']
     STD = extra['STD']
     mi1 = extra['mi1']
