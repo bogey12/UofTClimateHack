@@ -7,3 +7,4 @@ compute:
       on_build_start:
         - wandb login c68dc2760a0b81a24d35f29820f7c90ebd2735e9
         - pip install --upgrade torch==1.10.2+cu102 torchvision==0.11.3+cu102 torchaudio===0.10.2+cu102 -f https://download.pytorch.org/whl/cu102/torch_stable.html
+        - pip install -U pytorch-lightning
