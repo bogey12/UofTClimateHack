@@ -39,7 +39,7 @@ default_config = {
     'is_training': 1, 
     'img_width': 64, 
     'img_channel': 1, 
-    'model_name': 'predrnn',
+    'model_name': '',
     'pretrained_model': '', 
     'num_hidden': '64,64,64,64', 
     'filter_size': 5, 

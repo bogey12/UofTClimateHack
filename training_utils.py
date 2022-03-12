@@ -83,33 +83,50 @@ class PredictionTrainer(pl.LightningModule):
         batch_features, batch_targets = training_batch[-2:]
         predictions = self.forward(batch_features, **self.args)
         # print(predictions)
-        if not self.config['opt_flow']:
-            loss = self.criterion(predictions.unsqueeze(dim=2), batch_targets[:,:24].unsqueeze(dim=2))
-        else:
+        if self.config['opt_flow']:
             predictions = rearrange(predictions, 'b (t c) h w -> b t h w c', c=2)
             # target = rearrange(batch_targets[:,:predictions.shape[1]], 'b t h w c -> b (t c) h w')
             loss = self.criterion(predictions, batch_targets[:,:predictions.shape[1]])
+        
+        elif self.config['model_name'] == 'predrnn':
+            predictions, decouple_loss = predictions
+            net_input = torch.cat((batch_features, batch_targets), dim=1).unsqueeze(dim=2)[:, 1:]
+            loss = decouple_loss + self.criterion(predictions.unsqueeze(dim=2), net_input)
+        
+        else:
+            loss = self.criterion(predictions.unsqueeze(dim=2), batch_targets[:,:24].unsqueeze(dim=2))
+
         # loss = self.criterion(predictions, batch_targets[:,:predictions.shape[1]])
         self.log('train_loss', loss, prog_bar=True, sync_dist=True)
         return loss
+
+    #fix for PREDRNN
 
     def validation_step(self, training_batch, batch_idx):
         # batch_coordinates, batch_features, batch_targets = training_batch
         batch_features, batch_targets = training_batch[-2:]
         predictions = self.forward(batch_features, **self.args)
 
-        if not self.config['opt_flow']:
-            loss = self.criterion(predictions.unsqueeze(dim=2), batch_targets[:,:self.config['outputs']].unsqueeze(dim=2))
-        else:
+        if self.config['opt_flow']:
             predictions = rearrange(predictions, 'b (t c) h w -> b t h w c', c=2)
             # target = rearrange(batch_targets[:,:predictions.shape[1]], 'b t h w c -> b (t c) h w')
             loss = self.criterion(predictions, batch_targets[:,:predictions.shape[1]])
+        
+        elif self.config['model_name'] == 'predrnn':
+            predictions, decouple_loss = predictions
+            net_input = torch.cat((batch_features, batch_targets), dim=1).unsqueeze(dim=2)[:, 1:]
+            loss = decouple_loss + self.criterion(predictions.unsqueeze(dim=2), net_input)
+        
+        else:
+            loss = self.criterion(predictions.unsqueeze(dim=2), batch_targets[:,:self.config['outputs']].unsqueeze(dim=2))
 
         if len(self.logged) > 0 and batch_idx == self.logged[0]:
             grid_expected = wandb.Image(torchvision.utils.make_grid([batch_targets[:1, i] for i in range(self.config['outputs'])]))
             grid_predicted = wandb.Image(torchvision.utils.make_grid([predictions[:1, i] for i in range(self.config['outputs'])]))
             wandb.log({"predictions":grid_predicted, "expected": grid_expected})
             self.logged.pop(0)
+
+
         wandb.log({'valid_loss':loss})
         self.log('valid_loss', loss, prog_bar=True, sync_dist=True)
         return loss
