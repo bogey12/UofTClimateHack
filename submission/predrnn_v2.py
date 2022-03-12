@@ -186,17 +186,17 @@ class PredRNNModel(nn.Module):
         config['input_length'] = config['inputs']
         config['total_length'] = config['inputs'] + config['outputs']
         self.args = Namespace(**config)
-        self.predrnn = RNN(config['numlayers'], config['hiddenlayers'], self.args)
+        self.predrnn = RNN(len(config['num_hidden']), config['num_hidden'], self.args)
         self.config = config
 
     def forward(self, x):
         #batch, length, height, width, channel
         assert x.shape[1] == self.config['total_length']
         x = rearrange(x, 'b (c t) h w -> b t h w c', c=1)
-        x = reshape_patch(x, self.config['patchsize']).float()
+        x = reshape_patch(x, self.config['patch_size']).float()
         self.eta, real_mask = schedule_sampling(self.eta, self.iter, self.args, scheduled_sampling=self.training) 
         x, loss = self.predrnn(x, real_mask)
-        x = reshape_patch_back(x, self.config['patchsize']).float()
+        x = reshape_patch_back(x, self.config['patch_size']).float()
         x = rearrange(x, 'b t h w c -> b (c t) h w')
         if self.training:
             self.iter += 1
