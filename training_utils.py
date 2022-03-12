@@ -47,14 +47,15 @@ class PredictionTrainer(pl.LightningModule):
             channels = config['outputs']
             if config['model_name'] == 'predrnn':
                 channels += config['inputs'] - 1
+                self.eval_criterion = MS_SSIMLoss(channels=config['outputs'], data_range=data_range)
             self.criterion = MS_SSIMLoss(channels=channels, data_range=data_range)
-
+        
         # self.criterion = nn.MSELoss()
         self.config = config 
         # self.config['device'] = device
         self.args = args
         self.convert = convert
-        self.logged = sorted(random.sample(list(range(0, 200)), k=10))
+        self.logged = sorted(random.sample(list(range(0, 200//self.config['batch_size'])), k=10))
         self.lr = None
         self.downconv = nn.Identity()
         if config['downsample']:
@@ -133,9 +134,9 @@ class PredictionTrainer(pl.LightningModule):
         elif self.config['model_name'] == 'predrnn':
             predictions, decouple_loss = predictions
             # print('PREDICTIONS:', predictions.unsqueeze(dim=2).shape)
-            net_input = features.unsqueeze(dim=2)[:, 1:]
+            expected = batch_targets.unsqueeze(dim=2)
             # print('NETINPUT:', net_input.shape)
-            loss = decouple_loss + self.criterion(predictions.unsqueeze(dim=2), net_input)
+            loss = self.criterion(predictions.unsqueeze(dim=2)[:, -self.config['outputs']:], expected)
         
         else:
             loss = self.criterion(predictions.unsqueeze(dim=2), batch_targets[:,:24].unsqueeze(dim=2))
@@ -157,7 +158,7 @@ class PredictionTrainer(pl.LightningModule):
             # print(avg_loss)
             self.log('avg_loss', avg_loss)
             wandb.log({'avg_loss':avg_loss})
-        self.logged = sorted(random.sample(list(range(0, 200)), k=10))
+        self.logged = sorted(random.sample(list(range(0, 200//self.config['batch_size'])), k=10))
 
 
 def train_model(rawargs, model_class, name, **args):
