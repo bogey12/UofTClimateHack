@@ -206,7 +206,7 @@ def train_model(rawargs, model_class, name, **args):
     ch_training.cached_items = training# + testing
     ch_validation = ClimateHackDataset(validation_ds, crops_per_slice=5, day_limit=3, outputs=config['outputs'])#, cache=False)
     ch_validation.cached_items = testing
-    training_dl, validation_dl = [DataLoader(ds, batch_size=config['batch_size'], num_workers=0, pin_memory=True) for ds in [ch_training, ch_validation]]
+    training_dl, validation_dl = [DataLoader(ds, batch_size=config['batch_size'], num_workers=0, pin_memory=True, drop_last=True) for ds in [ch_training, ch_validation]]
     device = "cuda" if torch.cuda.is_available() else "cpu"
     checkpoint_callback = ModelCheckpoint(
         monitor = "valid_loss",
