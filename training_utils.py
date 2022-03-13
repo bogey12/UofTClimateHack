@@ -210,9 +210,9 @@ def train_model(rawargs, model_class, name, **args):
     training_dl, validation_dl = [DataLoader(ds, batch_size=config['batch_size'], num_workers=0, pin_memory=True, drop_last=True) for ds in [ch_training, ch_validation]]
     device = "cuda" if torch.cuda.is_available() else "cpu"
     checkpoint_callback = ModelCheckpoint(
-        monitor = "valid_loss",
+        monitor = "avg_loss",
         dirpath = "submission/",
-        filename = name + "-{epoch:02d}-{valid_loss:.4f}",
+        filename = name + "-{epoch:02d}-{avg_loss:.4f}",
         save_top_k=3,
         mode="min",
         save_weights_only=True
