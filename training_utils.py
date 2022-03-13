@@ -189,8 +189,14 @@ def train_model(rawargs, model_class, name, **args):
     # print(separate_tup)
     training_ds = dataset.sel(time=slice("2020-07-01 09:00", "2020-10-01 09:00"))
     validation_ds = dataset.sel(time=slice("2020-12-01 09:00", "2020-12-10 09:00"))
-    datapoints = np.load(f'{config["dataset"]}', allow_pickle=True)['datapoints']#.to_list()
-    valid_datapoints = np.load(f'{"valid_set.npz" if "validation" not in config else config["validation"]}', allow_pickle=True)['datapoints']#.to_list()
+    loaded_file = np.load(f'{config["dataset"]}', allow_pickle=True)
+    datapoints = loaded_file['datapoints']#.to_list()
+    
+    if config['internal_valid']:
+        valid_datapoints = loaded_file['valid']
+    else:
+        valid_datapoints = np.load(f'{config["validation"] or "valid_set.npz"}', allow_pickle=True)['datapoints']#.to_list()
+    
     np.random.shuffle(datapoints)
     tot_points = len(datapoints) 
     validation_size = len(valid_datapoints)
