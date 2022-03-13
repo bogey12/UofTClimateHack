@@ -136,7 +136,7 @@ class PredictionTrainer(pl.LightningModule):
             # print('PREDICTIONS:', predictions.unsqueeze(dim=2).shape)
             expected = batch_targets.unsqueeze(dim=2)
             # print('NETINPUT:', net_input.shape)
-            loss = self.criterion(predictions.unsqueeze(dim=2)[:, -self.config['outputs']:], expected)
+            loss = self.eval_criterion(predictions.unsqueeze(dim=2)[:, -self.config['outputs']:], expected)
         
         else:
             loss = self.criterion(predictions.unsqueeze(dim=2), batch_targets[:,:24].unsqueeze(dim=2))
