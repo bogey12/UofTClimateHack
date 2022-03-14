@@ -59,9 +59,10 @@ class PredictionTrainer(pl.LightningModule):
         self.lr = None
         self.downconv = nn.Identity()
         if config['downsample']:
-            module_mapping = {"stride": nn.Conv2d, "maxpool": nn.MaxPool2d}
-            self.downconv = module_mapping[config['downsample']](config['inputs'], config['inputs'], 3, stride=2, padding=1) #downsample by 1/2
-
+            if config['downsample'] == 'stride':
+                self.downconv = nn.Conv2d(config['inputs'], config['inputs'], 3, stride=2, padding=1) #downsample by 1/2
+            elif config['downsample'] == 'maxpool':
+                self.downconv = nn.MaxPool2d(2)
         #self.truncated_bptt_steps = 6
 
     def forward(self, x):
