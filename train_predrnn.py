@@ -40,7 +40,7 @@ add_arguments(parser)
 args = vars(parser.parse_args())
 print(args)
 
-args['numhidden'] = list(map(int, args['numhidden'].split(',')))
+args['numhidden'] = list(map(int, args['numhidden'].split(' ')))
 def train():
     train_model(args, PredRNNModel, 'predrnn-1')
 if args['sweep']:
