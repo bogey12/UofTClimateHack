@@ -329,11 +329,11 @@ class PredRNNModel(nn.Module):
         self.predrnn = RNN(len(config['num_hidden']), config['num_hidden'], self.args)
         self.config = config
 
-    def forward(self, inp):
+    def forward(self, inp, override=False):
         x = rearrange(inp, 'b (c t) h w -> b t h w c', c=1)
         x = reshape_patch(x, self.config['patch_size']).float()
         old_eta = self.eta
-        self.eta, real_mask = schedule_sampling(self.eta, self.iter, self.args, scheduled_sampling=self.training) 
+        self.eta, real_mask = schedule_sampling(self.eta, self.iter, self.args, scheduled_sampling=(self.training or override)) 
         if not self.training:
             self.eta = old_eta
         real_mask = torch.tensor(real_mask).float().to(self.args.device)
