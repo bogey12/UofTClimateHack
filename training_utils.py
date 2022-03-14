@@ -115,6 +115,8 @@ class PredictionTrainer(pl.LightningModule):
 
         # loss = self.criterion(predictions, batch_targets[:,:predictions.shape[1]])
         self.log('train_loss', loss, prog_bar=True, sync_dist=True)
+        self.log('eta', self.model.eta, prog_bar=True, sync_dist=True)
+        wandb.log({'eta': self.model.eta})
         return loss
 
 
@@ -134,18 +136,18 @@ class PredictionTrainer(pl.LightningModule):
         
         elif self.config['model_name'] == 'predrnn':
             predictions, decouple_loss = predictions
+            easy_predictions, _ = self.forward(features, override=True)
             # print('PREDICTIONS:', predictions.unsqueeze(dim=2).shape)
             expected = batch_targets.unsqueeze(dim=2)
             # print('NETINPUT:', net_input.shape)
             loss = self.eval_criterion(predictions.unsqueeze(dim=2)[:, -self.config['outputs']:], expected)
-        
         else:
             loss = self.criterion(predictions.unsqueeze(dim=2), batch_targets[:,:24].unsqueeze(dim=2))
 
         if len(self.logged) > 0 and batch_idx == self.logged[0]:
             grid_expected = wandb.Image(torchvision.utils.make_grid([batch_targets[:1, i] for i in range(self.config['outputs'])]))
             if self.config['model_name'] == 'predrnn':
-                grid_predicted = wandb.Image(torchvision.utils.make_grid([predictions[:1, i + self.config['inputs'] - 1] for i in range(self.config['outputs'])]))
+                grid_predicted = wandb.Image(torchvision.utils.make_grid([easy_predictions[:1, i + self.config['inputs'] - 1] for i in range(self.config['outputs'])]))
             else:
                 grid_predicted = wandb.Image(torchvision.utils.make_grid([predictions[:1, i] for i in range(self.config['outputs'])]))
 
