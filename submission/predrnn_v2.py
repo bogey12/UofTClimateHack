@@ -332,8 +332,10 @@ class PredRNNModel(nn.Module):
     def forward(self, inp):
         x = rearrange(inp, 'b (c t) h w -> b t h w c', c=1)
         x = reshape_patch(x, self.config['patch_size']).float()
-        
+        old_eta = self.eta
         self.eta, real_mask = schedule_sampling(self.eta, self.iter, self.args, scheduled_sampling=self.training) 
+        if not self.training:
+            self.eta = old_eta
         real_mask = torch.tensor(real_mask).float().to(self.args.device)
         
         x, loss = self.predrnn(x, real_mask)
