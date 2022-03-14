@@ -65,10 +65,10 @@ class PredictionTrainer(pl.LightningModule):
                 self.downconv = nn.MaxPool2d(2)
         #self.truncated_bptt_steps = 6
 
-    def forward(self, x):
+    def forward(self, x, **args):
         y, extra = preprocessing(self.config, x)
         # print(x.shape)
-        x = self.model(y, **self.args)
+        x = self.model(y, **args, **self.args)
         if self.config['model_name'] == 'predrnn':
             x, loss = x
         x = postprocessing(self.config, x, extra)
