@@ -96,6 +96,7 @@ class PredictionTrainer(pl.LightningModule):
         features = self.downconv(features)
         if self.config['model_name'] == 'predrnn':
             features = torch.cat((features, batch_targets), dim=1).clone() #b (c t) h w
+        
         predictions = self.forward(features, **self.args)
         # print(predictions)
         if self.config['opt_flow']:
@@ -109,7 +110,12 @@ class PredictionTrainer(pl.LightningModule):
             net_input = features.unsqueeze(dim=2)[:, 1:]
             # print('NETINPUT:', net_input.shape)
             loss = decouple_loss + self.criterion(predictions.unsqueeze(dim=2), net_input)
-        
+            if self.config['reverse_input']:
+                flipped_features = torch.flip(features, [1])
+                net_input_f = flipped_features.unsqueeze(dim=2)[:, 1:]
+                predictions2, decouple_loss2 = self.forward(flipped_features, **self.args)
+                loss += decouple_loss2 + self.criterion(predictions2.unsqueeze(dim=2), net_input_f)
+                loss /= 2
         else:
             loss = self.criterion(predictions.unsqueeze(dim=2), batch_targets[:,:24].unsqueeze(dim=2))
 
