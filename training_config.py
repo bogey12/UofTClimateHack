@@ -41,7 +41,7 @@ default_config = {
     'img_channel': 1, 
     'model_name': '',
     'pretrained_model': '', 
-    'num_hidden': '64,64,64,64', 
+    'num_hidden': '64 64 64 64', 
     'filter_size': 5, 
     'dataset_slice': -1, 
     'internal_valid': False,

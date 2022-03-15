@@ -20,16 +20,21 @@ def preprocessing(config, batch_features):
             batch_features -= MEAN
             batch_features /= STD
         elif config['normalize'] == 'minmax':
-            mi1 = batch_features.min()
-            ma1 = batch_features.max()
+            mi1 = batch_features.min().detach()
+            ma1 = batch_features.max().detach()
             batch_features -= mi1
             batch_features /= (ma1 - mi1)
             batch_features *= 2
             batch_features -= 1
+        elif config['normalize'] == 'classic':
+            batch_features /= 1023
+
     return batch_features, {'MEAN':MEAN, 'STD':STD, 'mi1':mi1, 'ma1':ma1}
 
 def postprocessing(config, predictions, extra):
     # print('POST PROCESSING:', predictions.shape)
+    # print('MAXIMUM', predictions.max().detach())
+    # print('MINIMUM', predictions.min().detach())
     MEAN = extra['MEAN']
     STD = extra['STD']
     mi1 = extra['mi1']
@@ -48,4 +53,7 @@ def postprocessing(config, predictions, extra):
             predictions /= 2
             predictions *= (ma1 - mi1)
             predictions += mi1
+        elif config['normalize'] == 'classic':
+            predictions = torch.clamp(predictions, 0, 1)
+            predictions *= 1023
     return predictions
