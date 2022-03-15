@@ -97,7 +97,7 @@ class PredictionTrainer(pl.LightningModule):
         if self.config['model_name'] == 'predrnn':
             features = torch.cat((features, batch_targets), dim=1).clone() #b (c t) h w
         
-        predictions = self.forward(features, **self.args)
+        predictions = self.forward(features.clone(), **self.args)
         # print(predictions)
         if self.config['opt_flow']:
             predictions = rearrange(predictions, 'b (t c) h w -> b t h w c', c=2)
