@@ -366,7 +366,7 @@ def schedule_sampling(eta, itr, args, scheduled_sampling=True):
                       args.img_width // args.patch_size,
                       args.img_width // args.patch_size,
                       args.patch_size ** 2 * args.img_channel))
-    if (not args.scheduled_sampling) or not scheduled_sampling:
+    if (not args.scheduled_sampling) and (not scheduled_sampling):
         return 0.0, zeros
 
     if itr < args.sampling_stop_iter:
