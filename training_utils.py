@@ -58,10 +58,10 @@ class PredictionTrainer(pl.LightningModule):
         self.logged = sorted(random.sample(list(range(0, 200//self.config['batch_size'])), k=10))
         self.lr = None
         self.downconv = nn.Identity()
-        if config['downsample']:
-            if config['downsample'] == 'stride':
+        if config['downsampler']:
+            if config['downsampler'] == 'stride':
                 self.downconv = nn.Conv2d(config['inputs'], config['inputs'], 3, stride=2, padding=1) #downsample by 1/2
-            elif config['downsample'] == 'maxpool':
+            elif config['downsampler'] == 'maxpool':
                 self.downconv = nn.MaxPool2d(2)
         #self.truncated_bptt_steps = 6
 

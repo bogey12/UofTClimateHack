@@ -33,7 +33,7 @@ default_config = {
     "sweep": False,
     "sweepid": "",
     "sweepruns": 1,
-    "downsample": "", #"", stride, maxpool
+    "downsampler": "", #"", stride, maxpool
     "hiddensize": 64,
     "lstmlayers": 4,
     'is_training': 1, 
@@ -48,7 +48,8 @@ default_config = {
     'validation': '',
     'stride': 1, 'patch_size': 4, 'layer_norm': 1, 'decouple_beta': 0.1, 'reverse_scheduled_sampling': 0, 'r_sampling_step_1': 25000, 'r_sampling_step_2': 
 50000, 'r_exp_alpha': 5000, 'scheduled_sampling': 1, 'sampling_stop_iter': 50000, 'sampling_start_value': 1.0, 'sampling_changing_rate': 2e-05, 'reverse_input': 1, 'max_iterations': 80000, 'display_interval': 100, 
-'test_interval': 5000, 'snapshot_interval': 5000, 'num_save_samples': 10, 'visual': 0, 'visual_path': './decoupling_visual', 'injection_action': 'concat', 'conv_on_input': 0, 'res_on_conv': 0, 'num_action_ch': 4
+'test_interval': 5000, 'snapshot_interval': 5000, 'num_save_samples': 10, 'visual': 0, 'visual_path': './decoupling_visual', 'injection_action': 'concat', 'conv_on_input': 0, 'res_on_conv': 0, 'num_action_ch': 4,
+'embedding_dim': 256, 'n_codes': 2048, 'n_hiddens': 240, 'n_res_layers': 4, 'downsample': (4, 4, 4)
 }
 
 # default_config = dict([(k.replace('_', ''), v) for k, v in default_config.items()])
