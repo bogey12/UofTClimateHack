@@ -121,8 +121,9 @@ class PredictionTrainer(pl.LightningModule):
 
         # loss = self.criterion(predictions, batch_targets[:,:predictions.shape[1]])
         self.log('train_loss', loss, prog_bar=True, sync_dist=True)
-        self.log('eta', self.model.eta, prog_bar=True, sync_dist=True)
-        wandb.log({'eta': self.model.eta})
+        if self.config['model_name'] == 'predrnn':
+            self.log('eta', self.model.eta, prog_bar=True, sync_dist=True)
+            wandb.log({'eta': self.model.eta})
         return loss
 
 
