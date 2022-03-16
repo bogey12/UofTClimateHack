@@ -107,10 +107,10 @@ class PredictionTrainer(pl.LightningModule):
         elif self.config['model_name'] == 'predrnn':
             predictions, decouple_loss = predictions
             net_input = features.unsqueeze(dim=2)[:, 1:]
-            # print('PREDICTIONS MIN:', predictions.min().detach())
-            # print('PREDICTIONS MAX:', predictions.max().detach())
-            # print('NETINPUT:', net_input.min().detach())
-            # print('NETINPUT:', net_input.max().detach())
+            print('PREDICTIONS MIN:', predictions.min().detach())
+            print('PREDICTIONS MAX:', predictions.max().detach())
+            print('NETINPUT:', net_input.min().detach())
+            print('NETINPUT:', net_input.max().detach())
             crit_loss = self.criterion(predictions.unsqueeze(dim=2), net_input)
             print('MSSSIM LOSS', crit_loss)
             print('DECOUPLE LOSS', decouple_loss)
@@ -119,7 +119,7 @@ class PredictionTrainer(pl.LightningModule):
             if self.config['reverse_input']:
                 flipped_features = torch.flip(features, [1])
                 net_input_f = flipped_features.unsqueeze(dim=2)[:, 1:]
-                predictions2, decouple_loss2 = self.forward(flipped_features, **self.args)
+                predictions2, decouple_loss2 = self.forward(flipped_features.clone(), **self.args)
                 loss += decouple_loss2 + self.criterion(predictions2.unsqueeze(dim=2), net_input_f)
                 loss /= 2
         else:
@@ -149,12 +149,14 @@ class PredictionTrainer(pl.LightningModule):
         elif self.config['model_name'] == 'predrnn':
             predictions, decouple_loss = predictions
             net_input = features.unsqueeze(dim=2)[:, 1:]
-            easy_predictions, _ = self.forward(features, override=True)
+            easy_predictions, _ = self.forward(features.clone(), override=True)
             # print('PREDICTIONS:', predictions.unsqueeze(dim=2).shape)
             expected = batch_targets.unsqueeze(dim=2)
             # print('NETINPUT:', net_input.shape)
             loss = self.eval_criterion(predictions.unsqueeze(dim=2)[:, -self.config['outputs']:], expected)
             easy_loss = self.criterion(easy_predictions.unsqueeze(dim=2), net_input)
+        
+        
         else:
             loss = self.criterion(predictions.unsqueeze(dim=2), batch_targets[:,:24].unsqueeze(dim=2))
 
