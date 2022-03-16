@@ -107,13 +107,13 @@ class PredictionTrainer(pl.LightningModule):
         elif self.config['model_name'] == 'predrnn':
             predictions, decouple_loss = predictions
             net_input = features.unsqueeze(dim=2)[:, 1:]
-            print('PREDICTIONS MIN:', predictions.min().detach())
-            print('PREDICTIONS MAX:', predictions.max().detach())
-            print('NETINPUT:', net_input.min().detach())
-            print('NETINPUT:', net_input.max().detach())
+            # print('PREDICTIONS MIN:', predictions.min().detach())
+            # print('PREDICTIONS MAX:', predictions.max().detach())
+            # print('NETINPUT:', net_input.min().detach())
+            # print('NETINPUT:', net_input.max().detach())
             crit_loss = self.criterion(predictions.unsqueeze(dim=2), net_input)
-            print('MSSSIM LOSS', crit_loss)
-            print('DECOUPLE LOSS', decouple_loss)
+            # print('MSSSIM LOSS', crit_loss)
+            # print('DECOUPLE LOSS', decouple_loss)
             loss = decouple_loss + crit_loss
             # print(loss)
             if self.config['reverse_input']:
