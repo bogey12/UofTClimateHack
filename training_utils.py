@@ -112,8 +112,8 @@ class PredictionTrainer(pl.LightningModule):
             # print('NETINPUT:', net_input.min().detach())
             # print('NETINPUT:', net_input.max().detach())
             crit_loss = self.criterion(predictions.unsqueeze(dim=2), net_input)
-            # print('MSSSIM LOSS', crit_loss)
-            # print('DECOUPLE LOSS', decouple_loss)
+            print('MSSSIM LOSS', crit_loss)
+            print('DECOUPLE LOSS', decouple_loss)
             loss = decouple_loss + crit_loss
             # print(loss)
             if self.config['reverse_input']:
@@ -172,6 +172,7 @@ class PredictionTrainer(pl.LightningModule):
         wandb.log({'valid_loss':loss})
         if self.config['model_name'] == 'predrnn':
             wandb.log({'easy_loss': easy_loss})
+            self.log('easy_loss', easy_loss, prog_bar=True, sync_dist=True)
         return loss
 
     def validation_epoch_end(self, outputs):
