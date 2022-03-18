@@ -368,7 +368,7 @@ def schedule_sampling(eta, itr, args, scheduled_sampling=True):
                       args.patch_size ** 2 * args.img_channel))
     if (not args.scheduled_sampling) or (not scheduled_sampling):
         print('ZEROING')
-        return 0.0, zeros
+        return 0.0, zeros 
 
     if itr < args.sampling_stop_iter:
         eta -= args.sampling_changing_rate
