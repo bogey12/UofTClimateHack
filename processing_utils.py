@@ -33,6 +33,8 @@ def preprocessing(config, batch_features):
 
 def postprocessing(config, predictions, extra):
     # print('POST PROCESSING:', predictions.shape)
+    # print('MAXIMUM', predictions.max().detach())
+    # print('MINIMUM', predictions.min().detach())
     MEAN = extra['MEAN']
     STD = extra['STD']
     mi1 = extra['mi1']

@@ -106,10 +106,16 @@ class PredictionTrainer(pl.LightningModule):
         
         elif self.config['model_name'] == 'predrnn':
             predictions, decouple_loss = predictions
-            # print('PREDICTIONS:', predictions.unsqueeze(dim=2).shape)
             net_input = features.unsqueeze(dim=2)[:, 1:]
-            # print('NETINPUT:', net_input.shape)
-            loss = decouple_loss + self.criterion(predictions.unsqueeze(dim=2), net_input)
+            # print('PREDICTIONS MIN:', predictions.min().detach())
+            # print('PREDICTIONS MAX:', predictions.max().detach())
+            # print('NETINPUT:', net_input.min().detach())
+            # print('NETINPUT:', net_input.max().detach())
+            crit_loss = self.criterion(predictions.unsqueeze(dim=2), net_input)
+            # print('MSSSIM LOSS', crit_loss)
+            # print('DECOUPLE LOSS', decouple_loss)
+            loss = decouple_loss + crit_loss
+            # print(loss)
             if self.config['reverse_input']:
                 flipped_features = torch.flip(features, [1])
                 net_input_f = flipped_features.unsqueeze(dim=2)[:, 1:]
@@ -134,7 +140,7 @@ class PredictionTrainer(pl.LightningModule):
         features = self.downconv(features)
         if self.config['model_name'] == 'predrnn':
             features = torch.cat((features, batch_targets), dim=1) #b (c t) h w
-        predictions = self.forward(features, **self.args)
+        predictions = self.forward(features.clone(), **self.args)
         # print(predictions)
         if self.config['opt_flow']:
             predictions = rearrange(predictions, 'b (t c) h w -> b t h w c', c=2)
