@@ -1,10 +1,85 @@
 import torch.nn as nn
 import torch
-from submission.utils import *
-from submission.ViT import ViT, ViT_Skip, ViT_encode, ViT_decode, ViT_Temp
+import sys
+sys.path.insert(1, './submission')
+from utils import *
+from ViT import ViT, ViT_Skip, ViT_encode, ViT_decode, ViT_Temp
 from einops import rearrange
+from Focal_Transformer.classification.focal_transformer_v2 import FocalTransformer, FocalTransformerSys
 #from utils import *
 #from metnet import MetNet
+
+class Focal_FullUNet(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.model = FocalTransformerSys(img_size=128, patch_size=2, in_chans=12, embed_dim=48, depths=[2,2,6,2,1], drop_path_rate=0.2, 
+            focal_stages=[0, 1, 2, 3, 4], focal_levels=[2,2,2,2,2], expand_sizes=[3,3,3,3,3], expand_layer="all", 
+            num_heads=[3,6,12,24,24],
+            focal_windows=[7,5,3,1,1], 
+            window_size=8,
+            use_conv_embed=True, 
+            use_shift=False, 
+        )
+        """ Classifier """
+        self.outputs = nn.Conv2d(48, 24, kernel_size=1, padding=0)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, inputs):
+        """ Encoder """
+        x = self.model(inputs)
+        x = rearrange(x, 'b (x y) c -> b c x y', x=64, y=64)
+        """ Classifier """
+        outputs = self.outputs(x)
+        outputs = self.sigmoid(outputs)
+        return outputs
+
+class Focal_UNet(nn.Module):
+    def __init__(self):
+        super().__init__()
+        embed = 48
+        conv_type = "CBAM"
+        self.encoder = FocalTransformer(img_size=128, patch_size=2, in_chans=12, embed_dim=embed, depths=[2,2,6,2], drop_path_rate=0.2, 
+            focal_levels=[2,2,2,2], expand_sizes=[3,3,3,3], expand_layer="all", 
+            num_heads=[3,6,12,24],
+            focal_windows=[7,5,3,1], 
+            window_size=8,
+            use_conv_embed=True, 
+            use_shift=False, 
+        )
+        self.resid = conv_CBAM(12,embed)
+
+        self.pool = nn.MaxPool2d((2,2))
+        self.bottle = conv_CBAM(8*embed, 16*embed)
+        self.bich = nn.Conv2d(8*embed, 8*embed, kernel_size=3, padding=1, padding_mode='reflect')
+        self.biup = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+
+        self.d1 = decoder_block(16*embed, 8*embed, (2,2), 16, False, conv_type)
+        self.d2 = decoder_block(8*embed, 4*embed, (2,2), 32, False, conv_type)
+        self.d3 = decoder_block(4*embed, 2*embed, (2,2), 64, False, conv_type)
+        self.d4 = decoder_block(2*embed, embed, (2,2), 128, False, conv_type)
+
+        """ Classifier """
+        self.outputs = nn.Conv2d(embed, 24, kernel_size=1, padding=0)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, inputs):
+        """ Encoder """
+        x, skips = self.encoder(inputs)
+
+        """ Bottleneck """
+        p = self.pool(x)
+        p = self.bottle(p)
+
+        """ Decoder """
+        d1 = self.d1(p, x)
+        d2 = self.d2(d1, skips[2])
+        d3 = self.d3(d2, skips[1])
+        d4 = self.d4(d3, skips[0])
+ 
+        """ Classifier """
+        outputs = self.outputs(d4)
+        outputs = self.sigmoid(outputs)
+        return outputs
 
 class UNET_ConvGRU(nn.Module):
     def __init__(self,in_time_steps,out_time_steps):
@@ -68,19 +143,10 @@ class UNETViT(nn.Module):
         self.e3 = encoder_block(2*init_channels, 4*init_channels, (2,2), 16, conv_type)
         self.e4 = encoder_block(4*init_channels, 8*init_channels, (2,2), 8, conv_type)
         self.e5 = encoder_block(8*init_channels, 16*init_channels, (2,2), 4, conv_type)
-        # self.e6 = encoder_block(512, 1024)
-        """ Bottleneck """
-        #self.vit_temp = ViT_Temp(img_dim=img_dim,
-        #               in_channels=2*out_c,  # input features' channels (encoder)
-        #               # transformer inside dimension that input features will be projected
-        #               # out will be [batch, dim_out_vit_tokens, dim ]
-        #               dim=768,
-        #               blocks=1,
-        #               heads=1,
-        #               dim_linear_block=3072,
-        #               classification=False)
+
         self.vit = ViT(img_dim=4,
                        in_channels=16*init_channels,  # input features' channels (encoder)
+                       out_channels=32*init_channels,
                        patch_dim=1,
                        # transformer inside dimension that input features will be projected
                        # out will be [batch, dim_out_vit_tokens, dim ]
@@ -93,6 +159,7 @@ class UNETViT(nn.Module):
         token_dim = 16*init_channels
         self.project_patches_back = nn.Linear(1024, token_dim)
         # upsampling path
+        #self.b = conv_CBAM(16*init_channels, 32*init_channels)
         self.b = conv_block(16*init_channels, 32*init_channels)
 
         #self.skip1 = ViT_Skip(128, init_channels)
@@ -102,12 +169,12 @@ class UNETViT(nn.Module):
         #self.skip5 = ViT_Skip(8, 16*init_channels)
 
         """ Decoder """
-        self.d0 = decoder_block(32*init_channels, 16*init_channels, (2,2), 8, conv_type)
+        self.d0 = decoder_block(32*init_channels, 16*init_channels, (2,2), 8, True, conv_type)
         # self.d0b = decoder_block(1024, 512)
-        self.d1 = decoder_block(16*init_channels, 8*init_channels, (2,2), 16, conv_type)
-        self.d2 = decoder_block(8*init_channels, 4*init_channels, (2,2), 32, conv_type)
-        self.d3 = decoder_block(4*init_channels, 2*init_channels, (2,2), 64, conv_type)
-        self.d4 = decoder_block(2*init_channels, init_channels, (2,2), 128, conv_type)
+        self.d1 = decoder_block(16*init_channels, 8*init_channels, (2,2), 16, True, conv_type)
+        self.d2 = decoder_block(8*init_channels, 4*init_channels, (2,2), 32, True, conv_type)
+        self.d3 = decoder_block(4*init_channels, 2*init_channels, (2,2), 64, True, conv_type)
+        self.d4 = decoder_block(2*init_channels, init_channels, (2,2), 128, True, conv_type)
         """ Classifier """
         self.outputs = nn.Conv2d(init_channels, out_channels, kernel_size=1, padding=0)
         self.sigmoid = nn.Sigmoid()

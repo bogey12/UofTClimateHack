@@ -8,8 +8,17 @@ Function: Add CBAM to raw TransUNet
 """
 import torch
 import torch.nn as nn
-from submission.ConvGRU import ConvGRU
-from submission.ViT import MultiHeadCrossAttention, ViT_Temp
+import numpy as np
+import sys
+import os
+import os.path as osp
+sys.path.insert(1, './submission')
+from collections import OrderedDict
+from ConvGRU import ConvGRU
+from ViT import MultiHeadCrossAttention, ViT_Temp
+from config import cfg
+
+
 def _stack_tups(tuples, stack_dim=1):
     "Stack tuple of tensors along `stack_dim`"
     return tuple(
@@ -225,11 +234,14 @@ class encoder_block(nn.Module):
         return x, p
 
 class decoder_block(nn.Module):
-    def __init__(self, in_c, out_c, p_size, img_dim, conv_type=None):
+    def __init__(self, in_c, out_c, p_size, img_dim, is_up=True, conv_type=None):
         super().__init__()
-        self.up = nn.ConvTranspose2d(in_c, out_c, kernel_size=p_size, stride=p_size, padding=0)
-        #self.bich = nn.Conv2d(in_c, out_c, kernel_size=1, padding=0)
-        #self.biup = nn.Upsample(scale_factor=2, mode='bilinear')
+        self.is_up = is_up
+        if is_up:
+            self.up = nn.ConvTranspose2d(in_c, out_c, kernel_size=p_size, stride=p_size, padding=0)
+        else:
+            self.bich = nn.Conv2d(in_c, out_c, kernel_size=3, padding=1, padding_mode='reflect')
+            self.biup = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
         #self.cross_attend = MultiHeadCrossAttention(in_c, out_c)
         #self.gn = nn.GroupNorm(num_groups=12, num_channels=out_c, eps=1e-6)
         #self.relu = nn.ReLU()
@@ -239,9 +251,10 @@ class decoder_block(nn.Module):
             self.conv = conv_block(2*out_c, out_c)
     def forward(self, inputs, skip):
         #skipx = self.cross_attend(inputs,skip)
-        x = self.up(inputs)
-        #x = x + self.bich(self.biup(inputs))
-        #x = self.gn(self.relu(x))
+        if self.is_up: 
+            x = self.up(inputs)
+        else:
+            x = self.bich(self.biup(inputs))
         x = torch.cat([x, skip], axis=1)
         #x = self.vit(x)
         x = self.conv(x)
@@ -301,4 +314,34 @@ class ConvGRU_decode(nn.Module):
         x, _ = self.ConvGRU(x, hid_init)
         x = self.up(x)
         return x
+
+def make_layers(block):
+    layers = []
+    for layer_name, v in block.items():
+        if 'pool' in layer_name:
+            layer = nn.MaxPool2d(kernel_size=v[0], stride=v[1],
+                                    padding=v[2])
+            layers.append((layer_name, layer))
+        elif 'deconv' in layer_name:
+            transposeConv2d = nn.ConvTranspose2d(in_channels=v[0], out_channels=v[1],
+                                                 kernel_size=v[2], stride=v[3],
+                                                 padding=v[4])
+            layers.append((layer_name, transposeConv2d))
+            if 'relu' in layer_name:
+                layers.append(('relu_' + layer_name, nn.ReLU(inplace=True)))
+            elif 'leaky' in layer_name:
+                layers.append(('leaky_' + layer_name, nn.LeakyReLU(negative_slope=0.2, inplace=True)))
+        elif 'conv' in layer_name:
+            conv2d = nn.Conv2d(in_channels=v[0], out_channels=v[1],
+                               kernel_size=v[2], stride=v[3],
+                               padding=v[4])
+            layers.append((layer_name, conv2d))
+            if 'relu' in layer_name:
+                layers.append(('relu_' + layer_name, nn.ReLU(inplace=True)))
+            elif 'leaky' in layer_name:
+                layers.append(('leaky_' + layer_name, nn.LeakyReLU(negative_slope=0.2, inplace=True)))
+        else:
+            raise NotImplementedError
+
+    return nn.Sequential(OrderedDict(layers))
 
