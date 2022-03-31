@@ -17,7 +17,7 @@ from torch.utils.data import DataLoader, random_split, TensorDataset
 from numpy import float32
 from dataset import ClimateHackDataset
 from loss import MS_SSIMLoss 
-from submission import ConvLSTMModel, UNET, UNET64, UNET_ConvGRU, UNETViT, ViT_Net
+from submission import ConvLSTMModel, UNET, UNET64, UNET_ConvGRU, UNETViT, ViT_Net, Focal_UNet, Focal_FullUNet
 #from metnet import MetNet
 from pytorch_msssim import ms_ssim, MS_SSIM
 from torchsummary import summary
@@ -26,7 +26,7 @@ from TransUNet_Models import AA_TransUnet
 
 # CUDA art path: /local/mnt2/workspace2/tol/anaconda3/envs/climatehack/lib
 #plt.rcParams["figure.figsize"] = (20, 12)
-BATCH_SIZE = 8
+BATCH_SIZE = 64
 EPOCHS = 1000
 MEAN = 0.3028213
 STDDEV = 0.16613534
@@ -55,6 +55,7 @@ def test(model, device):
             batch_features, batch_targets = batch_features.to(device), batch_targets.to(device)
             batch_predictions = model(batch_features)
             batch_predictions = 1023 * batch_predictions[:,:,32:96,32:96]
+            #batch_predictions = 1023 * batch_predictions
             batch_loss = test_criterion(batch_predictions.unsqueeze(2).squeeze(0), batch_targets.unsqueeze(2).squeeze(0))
             scores.append(batch_loss.cpu().numpy())
     print(f"Test Score: {np.mean(scores)} ({np.std(scores)})")
@@ -152,16 +153,31 @@ def train():
     #model = UNET(in_channels=12, out_channels=24) #
     #model = torch.nn.DataParallel(UNET_ConvGRU(12,24), device_ids=[0, 1, 2, 3])
     model = UNETViT(12,24)
+    #model = Focal_UNet()
+    #model = Focal_FullUNet()
     #model = AA_TransUnet(hparams)
     #model = UNET64(umodel)
-    model.load_state_dict(torch.load("submission/Test_UNet_ViT.pth"))
+    model.load_state_dict(torch.load("submission/Test_UNet_ViT_FullData.pth"))
     model = model.to(device)
-    print(summary(model, (12, 128, 128)))
+
+    # Switch the model to eval model
+    #model.eval()
+
+    # An example input you would normally provide to your model's forward() method.
+    #example = torch.rand(2, 12, 128, 128).to(device)
+
+    # Use torch.jit.trace to generate a torch.jit.ScriptModule via tracing.
+    #traced_script_module = torch.jit.trace(model, example)
+
+    # Save the TorchScript model
+    #traced_script_module.save("UNet_ViT_CBAM_proj12_ResizeConv.pt")
+    #print(summary(model, (12, 128, 128)))
     print(sum(p.numel() for p in model.parameters()))
+
     #torch.save(model.state_dict(), "submission/TransUNet.pth")
     #print(x)
     #optimiser = optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-5)
-    optimiser = optim.Adam(model.parameters(), lr=1e-4)
+    optimiser = optim.Adam(model.parameters(), lr=2.8e-4)
     criterion = nn.MSELoss()
     MSSIM_criterion = MS_SSIM(data_range=1.0, size_average=True, win_size=3, channel=out_channels)
 
@@ -170,7 +186,7 @@ def train():
     #test_seq2one(model,MSSIM_criterion,device)
     test_score = test(model,device)
     best_test_score = test_score
-    torch.save(model.state_dict(), "submission/Test_UNet_ViT_FullData.pth")
+    #torch.save(model.state_dict(), "submission/Test_FocalNet64_embed48_0Drop.pth")
     print("saving best test model")
 
     losses = []
@@ -207,30 +223,7 @@ def train():
             dataloader = DataLoader(py_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=1)
             for batch_features, batch_targets in dataloader:
                 batch_features, batch_targets = batch_features.to(device), batch_targets.to(device)
-                #batch_features = transformations(batch_features)
-                #batch_features = batch_features[:,:,32:96,32:96]
-                #batch_features = batch_features.permute(0, 2, 1, 3, 4)
-                #for j in range(0,24):
                 optimiser.zero_grad()
-                #batch_predictions = []
-                #for lead_time in range(out_channels):
-                    #tmp_out = model(batch_features, lead_time)
-                    #batch_predictions.append(tmp_out)
-                    #new_features = (batch_targets[:,:,lead_time,:,:] - MEAN) / STDDEV
-                    #new_features = new_features.unsqueeze(1).view(-1,1,1,64,64)
-                    #batch_features = torch.cat((batch_features[:,1:12,:,:,:], new_features.detach()), axis=1)
-                #batch_predictions = torch.stack(batch_predictions, dim=1)
-                # predictions shape (b,24,64,8,8) -> (b,24,1,64,64)
-                #batch_predictions = batch_predictions.view(-1,out_channels,1,64,64) # Change for Out Size
-                # Normalize batch_predictions before feeding to model again
-                #new_features = (batch_predictions - MEAN) / STDDEV
-                #batch_features = torch.cat((batch_features[:,1:12,:,:,:], new_features.detach()), axis=1)
-                # Repermute batch_predictions: (b,24,1,64,64) -> (b,1,24,64,64)
-                #batch_predictions = batch_predictions.permute(0, 2, 1, 3, 4)
-                #batch_predictions = batch_predictions.squeeze(1)
-                # batch_predictions = model(batch_features)
-
-
                 # UNET: features -> (b,12,128,128)
                 # UNET_ConvGRU: features -> (b,12,1,128,128)
                 batch_features = batch_features.squeeze(2)
@@ -250,27 +243,27 @@ def train():
                 i += 1
             #val_loss += eval(model, MSSIM_criterion, valloader, device)
             del ch_dataset,py_dataset,dataloader
-        for valfile in val_files:
-            ch_dataset = ClimateHackDataset(os.path.join(data_dir,valfile), crops_per_slice=10, in_channels=in_channels, out_channels=out_channels, lag=lag)
-            py_dataset = ch_dataset.get_dataset()
-            valloader = DataLoader(py_dataset, batch_size=BATCH_SIZE, shuffle=False)
-            val_loss += eval(model, MSSIM_criterion, valloader, device)
-            del ch_dataset,py_dataset,valloader
+        #for valfile in val_files:
+        #    ch_dataset = ClimateHackDataset(os.path.join(data_dir,valfile), crops_per_slice=10, in_channels=in_channels, out_channels=out_channels, lag=lag)
+        #    py_dataset = ch_dataset.get_dataset()
+        #    valloader = DataLoader(py_dataset, batch_size=BATCH_SIZE, shuffle=False)
+        #    val_loss += eval(model, MSSIM_criterion, valloader, device)
+        #    del ch_dataset,py_dataset,valloader
         losses.append(running_loss / count)
         print("Loss for epoch {}: {}".format(epoch + 1, running_loss/count))
-        print("Validation Score for Epoch {}: {}".format(epoch + 1, val_loss / len(val_files)))
+        #print("Validation Score for Epoch {}: {}".format(epoch + 1, val_loss / len(val_files)))
         #val_loss = 1 - (running_loss / count)
-        val_losses.append(val_loss / len(val_files))
-        if val_loss > best_val_score:
-            best_val_score = val_loss
-            best_epoch = epoch
+        #val_losses.append(val_loss / len(val_files))
+        #if val_loss > best_val_score:
+        #    best_val_score = val_loss
+        #    best_epoch = epoch
             #best_model = copy.deepcopy(model)
-            #torch.save(best_model.state_dict(), "submission/Unet_ViTBilinear.pth")
+            #torch.save(best_model.state_dict(), "submission/UNet_Resize_cproj12groups_FullData.pth")
             #print("saving best model at epoch x")
         test_score = test(model,device)
         if test_score > best_test_score:
             best_test_score = test_score
-            torch.save(model.state_dict(), "submission/Test_UNet_ViT_FullData.pth")
+            torch.save(model.state_dict(), "submission/Test_UNet_ViT_V2.pth")
             print("saving best test model")
         gc.collect()
     print("Best Model: Epoch = {}, Val MS_SSIM Score = {}".format(best_epoch,best_val_loss))

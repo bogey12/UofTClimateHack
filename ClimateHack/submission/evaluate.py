@@ -7,6 +7,7 @@ from climatehack import BaseEvaluator
 from model import ConvLSTMModel, UNET, UNETViT
 from pytorch_msssim import ms_ssim, MS_SSIM
 
+
 class Evaluator(BaseEvaluator):
     def setup(self):
         """Sets up anything required for evaluation.
@@ -17,22 +18,12 @@ class Evaluator(BaseEvaluator):
         #self.model = tf.keras.models.load_model('saved_model/my_model')
         self.mean = 0.3028213
         self.stddev = 0.16613534
-        #self.model = ConvLSTMModel(time_steps=1,channels=1,hidden_dim=64)
-        '''
-        self.model = mymetnet.MetNet(
-                hidden_dim=32,
-                forecast_steps=1,
-                input_channels=1,
-                output_channels=256, # Change for Out Size
-                sat_channels=1,
-                input_size=16, # change for seq2seq
-        )
-        '''
-        self.model = UNET(12,24)
-        #self.model = UNETViT(12,24)
-        self.model.load_state_dict(torch.load("UnetDropout00.pth"))
+        #self.model = UNET(12,24)
+        self.model = UNETViT(12,24)
+        self.model.load_state_dict(torch.load("Test_UNet_ViT_V2.pth"))
         #self.model.load_state_dict(torch.load("Unet_ViTBilinear_Crossattend.pth"))
-        self.model.eval()
+        #self.model.eval()
+        #self.model = torch.jit.load("../UNet_ViT_CBAM_proj12_ResizeConv.pt")
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.model = self.model.to(self.device)
 
@@ -198,11 +189,11 @@ class Evaluator(BaseEvaluator):
         return prediction
 
     def predict(self, coordinates: np.ndarray, data: np.ndarray) -> np.ndarray:
-        #batch_predictions = []
-        #for i in range(0,24):
-        #    batch_predictions.append(data[-1,32:96,32:96])
-        #return np.stack(batch_predictions,axis=0)
-        return self.UNET_predict(coordinates,data)
+        batch_predictions = []
+        for i in range(0,24):
+            batch_predictions.append(data[-1,32:96,32:96])
+        return np.stack(batch_predictions,axis=0)
+        #return self.UNET_predict(coordinates,data)
 
 
 def main():
