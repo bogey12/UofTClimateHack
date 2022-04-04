@@ -1,3 +1,4 @@
+# Default Training Configs for TrajGRU training
 import argparse
 default_config = {
     "separate": (32, 64, 128, 1),

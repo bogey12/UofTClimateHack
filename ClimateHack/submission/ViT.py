@@ -177,11 +177,6 @@ class MultiHeadCrossAttention(nn.Module):
             nn.Conv2d(channelS, channelS, kernel_size=1),
             nn.GroupNorm(num_groups=12, num_channels=channelS, eps=1e-6), nn.ReLU(inplace=True),
             nn.ConvTranspose2d(channelS, channelS, kernel_size=(2,2), stride=(2,2), padding=0))
-        #self.Yconv2 = nn.Sequential(
-        #    nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True),
-        #    nn.Conv2d(channelY, channelY, kernel_size=3, padding=1),
-        #    nn.Conv2d(channelY, channelS, kernel_size=1),
-        #    nn.BatchNorm2d(channelS), nn.ReLU(inplace=True))
         self.softmax = nn.Softmax(dim=1)
         self.Spe = PositionalEncodingPermute2D(channelS)
         self.Ype = PositionalEncodingPermute2D(channelY)
@@ -265,6 +260,7 @@ class TransformerEncoder(nn.Module):
             x = layer(x, mask)
         return x
 
+# Vision Transformer Module used in models
 class ViT(nn.Module):
     def __init__(self, *,
                  img_dim,
@@ -300,7 +296,6 @@ class ViT(nn.Module):
         self.img_dim = img_dim
         self.classification = classification
         # tokens = number of patches
-        #self.tokens = 12 * (img_dim // patch_dim) ** 2
         self.tokens = (img_dim // patch_dim) ** 2
         self.token_dim = in_channels * (patch_dim ** 2)
         self.dim = dim
@@ -308,9 +303,6 @@ class ViT(nn.Module):
 
         ## Projection and pos embeddings
         self.project_patches = nn.Linear(self.token_dim, self.dim)
-        #self.proj = nn.Conv2d(in_channels, 12*self.dim, kernel_size=patch_dim, stride=patch_dim, groups=12)
-        #self.projnorm = nn.GroupNorm(num_groups=12, num_channels=12*self.dim, eps=1e-6)
-
         self.emb_dropout = nn.Dropout(dropout)
 
         self.cls_token = nn.Parameter(torch.randn(1, 1, self.dim))
@@ -327,11 +319,6 @@ class ViT(nn.Module):
         else:
             self.transformer = transformer
 
-        #self.project_patches_back = nn.Linear(self.dim, out_channels // 12)
-        #self.outnorm = nn.GroupNorm(num_groups=12, num_channels=out_channels, eps=1e-6)
-        #self.activation = nn.ReLU()
-        #self.drop = nn.Dropout(dropout)
-
     def forward(self, img, mask=None):
         # Create patches
         # from [batch, channels, h, w] to [batch, tokens , N], N=p*p*c , tokens = h/p *w/p
@@ -344,12 +331,6 @@ class ViT(nn.Module):
         img_patches = self.project_patches(img_patches)
         img_patches = torch.cat((expand_to_batch(self.cls_token, desired_size=batch_size), img_patches), dim=1)
 
-        #img_patches = self.proj(img)
-        #img_patches = self.projnorm(img_patches)
-        #img_patches = rearrange(img_patches,
-        #                        'b (groups c) x y -> b (x y groups) c',
-        #                        groups=12)
-        #img_patches = torch.cat((expand_to_batch(self.cls_token, desired_size=batch_size), img_patches), dim=1)
         # add pos. embeddings. + dropout
         # indexing with the current batch's token length to support variable sequences
         img_patches = img_patches + self.pos_emb1D[:self.tokens + 1, :]
@@ -358,154 +339,4 @@ class ViT(nn.Module):
         # feed patch_embeddings and output of transformer. shape: [batch, tokens, dim]
         y = self.transformer(patch_embeddings, mask)
         y = y[:, 1:, :]
-
-        #y = self.project_patches_back(y)
-        #y = rearrange(y, 'b (x y groups) c -> b (groups c) x y',
-        #              x=self.img_dim, y=self.img_dim,
-        #              groups=12)
-
-        #y = self.activation(y)
-        #y = self.drop(self.outnorm(y))
-        # we index only the cls token for classification. nlp tricks :P
         return y
-
-class ViT_Temp(nn.Module):
-    def __init__(self, *,
-                 img_dim,
-                 in_channels=3,
-                 num_classes=1,
-                 dim=512,
-                 blocks=6,
-                 heads=4,
-                 dim_linear_block=1024,
-                 dim_head=None,
-                 dropout=0.1, transformer=None, classification=True):
-        super().__init__()
-        self.classification = classification
-        # tokens = number of patches
-        tokens = in_channels
-        self.img_dim = img_dim
-        self.token_dim = img_dim ** 2
-        self.dim = dim
-        self.dim_head = (int(self.dim / heads)) if dim_head is None else dim_head
-
-        # Projection and pos embeddings
-        self.project_patches = nn.Linear(self.token_dim, self.dim)
-
-        self.emb_dropout = nn.Dropout(dropout)
-
-        self.cls_token = nn.Parameter(torch.randn(1, 1, self.dim))
-        self.pos_emb1D = nn.Parameter(torch.randn(tokens + 1, self.dim))
-
-        self.project_patches_back = nn.Linear(self.dim, self.token_dim)
-
-        if self.classification:
-            self.mlp_head = nn.Linear(self.dim, num_classes)
-
-        if transformer is None:
-            self.transformer = TransformerEncoder(self.dim, blocks=blocks, heads=heads,
-                                                  dim_head=self.dim_head,
-                                                  dim_linear_block=dim_linear_block,
-                                                  dropout=dropout)
-        else:
-            self.transformer = transformer
-
-    def forward(self, img, mask=None):
-        # Create patches
-        # from [batch, channels, h, w] to [batch, tokens , N], N=p*p*c , tokens = h/p *w/p
-        img_patches = rearrange(img,
-                                'b c x y -> b c (x y)')
-        batch_size, tokens, _ = img_patches.shape
-
-        # project patches with linear layer + add pos emb
-        img_patches = self.project_patches(img_patches)
-        img_patches = torch.cat((expand_to_batch(self.cls_token, desired_size=batch_size), img_patches), dim=1)
-        # add pos. embeddings. + dropout
-        # indexing with the current batch's token length to support variable sequences
-        img_patches = img_patches + self.pos_emb1D[:tokens + 1, :]
-        patch_embeddings = self.emb_dropout(img_patches)
-
-        # feed patch_embeddings and output of transformer. shape: [batch, tokens, dim]
-        y = self.transformer(patch_embeddings, mask)
-        b = self.mlp_head(y[:, 0, :]) if self.classification else y[:, 1:, :]
-        b = self.project_patches_back(b)
-        b = rearrange(b, 'b c (x y) -> b c x y',
-                      x=self.img_dim, y=self.img_dim)
-        return b
-
-class ViT_Skip(nn.Module):
-    def __init__(self,img_dim,in_channels):
-        super().__init__()
-        self.vit = ViT(img_dim=img_dim,
-                           in_channels=in_channels,  # input features' channels (encoder)
-                           patch_dim=2,
-                           # transformer inside dimension that input features will be projected
-                           # out will be [batch, dim_out_vit_tokens, dim ]
-                           dim=1024,
-                           blocks=1,
-                           heads=1,
-                           dim_linear_block=1024,
-                           classification=False)
-        # to project patches back - undoes vit's patchification
-        self.img_dim = img_dim
-        token_dim = 4 * in_channels
-        self.project_patches_back = nn.Linear(1024, token_dim)
-
-    def forward(self, inputs):
-        b = self.vit(inputs)  # out shape of number_of_patches, vit_transformer_dim
-
-        # from [number_of_patches, vit_transformer_dim] -> [number_of_patches, token_dim]
-        b = self.project_patches_back(b)
-
-        # from [batch, number_of_patches, token_dim] -> [batch, channels, img_dim_vit, img_dim_vit]
-        b = rearrange(b, 'b (x y) (patch_x patch_y c) -> b c (patch_x x) (patch_y y)',
-                      x=self.img_dim // 2, y=self.img_dim // 2,
-                      patch_x=2, patch_y=2)
-        return b
-
-class ViT_encode(nn.Module):
-    def __init__(self, in_c, out_c, img_dim, num_heads):
-        super().__init__()
-        self.img_dim = img_dim
-        self.vit = ViT(img_dim=img_dim,
-                           in_channels=in_c,  # input features' channels (encoder)
-                           patch_dim=1,
-                           # transformer inside dimension that input features will be projected
-                           # out will be [batch, dim_out_vit_tokens, dim ]
-                           dim=out_c,
-                           blocks=4,
-                           heads=num_heads,
-                           dim_linear_block=2*out_c,
-                           classification=False)
-        self.pool = nn.MaxPool2d((2,2))
-    def forward(self, inputs):
-        x = self.vit(inputs)
-        x = rearrange(x, 'b (x y) (patch_x patch_y c) -> b c (patch_x x) (patch_y y)',
-                      x=self.img_dim , y=self.img_dim,
-                      patch_x=1, patch_y=1)
-        p = self.pool(x)
-        return x, p
-
-class ViT_decode(nn.Module):
-    def __init__(self, in_c, out_c, img_dim, num_heads, p_size=(2,2)):
-        super().__init__()
-        self.img_dim = img_dim
-        self.up = nn.ConvTranspose2d(in_c, out_c, kernel_size=p_size, stride=p_size, padding=0)
-        self.vit = ViT(img_dim=img_dim,
-                           in_channels=2*out_c,  # input features' channels (encoder)
-                           patch_dim=1,
-                           # transformer inside dimension that input features will be projected
-                           # out will be [batch, dim_out_vit_tokens, dim ]
-                           dim=out_c,
-                           blocks=4,
-                           heads=num_heads,
-                           dim_linear_block=2*out_c,
-                           classification=False)
-    def forward(self, inputs, skip):
-        x = self.up(inputs)
-        x = torch.cat([x, skip], axis=1)
-        x = self.vit(x)
-        x = rearrange(x, 'b (x y) (patch_x patch_y c) -> b c (patch_x x) (patch_y y)',
-                      x=self.img_dim , y=self.img_dim,
-                      patch_x=1, patch_y=1)
-        return x

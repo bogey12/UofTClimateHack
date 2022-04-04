@@ -1,17 +1,16 @@
 import sys
-# sys.path.insert(1, 'C:\\Users\\HECAI\\Documents\\Personal\\ClimateAI\\grid_climate\\models2')
 sys.path.insert(1, './submission')
 from config import cfg
 import torch
 from forecaster import Forecaster
 from encoder import Encoder
 from collections import OrderedDict
-#from model import EF
 from torch.optim import lr_scheduler
 from trajGRU import TrajGRU
 import numpy as np
-#from convLSTM import ConvLSTM
 from itertools import accumulate
+
+# TrajGRU model parameter definitions and model building
 
 batch_size = cfg.GLOBAL.BATCH_SZIE
 
@@ -23,11 +22,6 @@ HEIGHT = cfg.HKO.ITERATOR.HEIGHT
 
 STRIDES = cfg.HKO.BENCHMARK.STRIDES
 STRIDES_TOTAL = list(accumulate(STRIDES, lambda a, b: a*b))
-
-# print(HEIGHT)
-# print(HEIGHT//STRIDES_TOTAL[0])
-# print(STRIDES)
-# print(STRIDES_TOTAL)
 
 # build model
 encoder_params = [

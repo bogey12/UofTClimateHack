@@ -1,5 +1,3 @@
-
-
 import numpy as np
 import random
 import copy
@@ -18,16 +16,15 @@ from dataset import ClimateHackDataset
 from train_trajgru import TempModel, MS_SSIMLoss
 from processing_utils import *
 
-
+# Training hyperparameters and constants
 BATCH_SIZE = 64
 EPOCHS = 1000
-#MEAN = 0.3028213
-#STDDEV = 0.16613534
 in_channels = 12
 out_channels = 24
 lag = 0
 random.seed(182739)
 
+# Load test data
 val_features = np.load("features.npz")
 val_targets = np.load("targets.npz")
 tensor_x = np.array(val_features["data"])

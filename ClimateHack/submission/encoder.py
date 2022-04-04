@@ -1,12 +1,12 @@
 from torch import nn
 import torch
 import sys
-# sys.path.insert(1, 'C:\\Users\\HECAI\\Documents\\Personal\\ClimateAI\\grid_climate\\models2')
 sys.path.insert(1, './submission')
 from utils import make_layers
 from config import cfg
 import logging
 
+# Encoder class for TrajGRU
 class Encoder(nn.Module):
     def __init__(self, subnets, rnns):
         super().__init__()

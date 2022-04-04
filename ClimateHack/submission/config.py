@@ -1,5 +1,6 @@
 import sys
-# sys.path.insert(1, 'C:\\Users\\HECAI\\Documents\\Personal\\ClimateAI\\grid_climate\\models2')
+
+# Some configs found from online repo required for trajGRU train pipeline.
 sys.path.insert(1, './submission')
 from ordered_easydict import OrderedEasyDict as edict
 import numpy as np

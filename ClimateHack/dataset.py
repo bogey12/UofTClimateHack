@@ -9,6 +9,7 @@ import numpy as np
 #import xarray as xr
 from numpy import float32
 
+# Main Dataset Class for loading in numpy files of full satellite image data for random cropping during training
 class ClimateHackDataset():
     def __init__(
         self,
@@ -31,18 +32,7 @@ class ClimateHackDataset():
     def load_data(self):
         return np.array(self.coordinates), np.array(self.features), np.array(self.labels)
 
-    def save_data(self, name):
-        mean = 0.3028213
-        stddev = 0.16613534
-        tensor_x = np.array(self.features)
-        print(tensor_x.shape)
-        tensor_y = np.array(self.labels)
-        tensor_x = tensor_x / 1023
-        tensor_x = (tensor_x - mean) / stddev
-        tensor_y = tensor_y / 1023
-        np.savez(name, tensor_x, tensor_y, x=tensor_x, y=tensor_y)
-        return True   
-
+    # Create tensordataset for main training flow
     def get_dataset(self):
         mean = 0.3028213
         stddev = 0.16613534
@@ -56,6 +46,7 @@ class ClimateHackDataset():
         my_dataset = TensorDataset(tensor_x,tensor_y) # create your datset
         return my_dataset
 
+    # Get tensor dataset for trajgru training
     def get_trajgru_dataset(self):
         tensor_x = np.array(self.features)
         tensor_y = np.array(self.labels)
@@ -63,6 +54,8 @@ class ClimateHackDataset():
         tensor_y = torch.Tensor(tensor_y) #
         my_dataset = TensorDataset(tensor_x,tensor_y) # create your datset
         return my_dataset
+
+    # Get sliding window random slices of satellite images
     def _process_data(self, data, in_channels, out_channels):
         day = data
         # day = (day - mean) / stddev
@@ -95,6 +88,7 @@ class ClimateHackDataset():
 
         return input_data, target_data
 
+# Pytorch dataset for loading pre-cropped numpy chunks
 class Climate_dataset(Dataset):
     def __init__(self, data_dir):
         # Compute chunk sizes
@@ -107,9 +101,6 @@ class Climate_dataset(Dataset):
         self.get_data(self.files[0])
     
     def get_data(self, filename):
-        #npzfile = np.load(os.path.join(self.data_dir,filename))
-        #tensor_x = npzfile['x']
-        #tensor_y = npzfile['y']
         chDataset = ClimateHackDataset(os.path.join(self.data_dir,filename), crops_per_slice=10, in_channels=12, out_channels=24, lag=0)
         tensor_x = np.array(chDataset.features)
         tensor_y = np.array(chDataset.labels)
@@ -139,10 +130,3 @@ if __name__ == '__main__':
         if size != 190:
             print(f)
             print(size)
-
-    #train_files = [f for f in os.listdir(data_dir) if not f.startswith('.')]
-    #print(len(train_files))
-    #for i in range(0,len(train_files)):
-    #    print(train_files[i])
-    #    ch_dataset = ClimateHackDataset(os.path.join(data_dir,train_files[i]), crops_per_slice=5, in_channels=12, out_channels=24, lag=0)
-    #    ch_dataset.save_data(os.path.join(out_dir,"file_{}".format(i)))

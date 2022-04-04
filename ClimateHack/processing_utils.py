@@ -1,5 +1,8 @@
 from einops import rearrange
 import torch
+
+# Processing utils for TrajGru Train flow.
+# preprocessing and postprocessing allow for normalizing features per patch or globally
 def preprocessing(config, batch_features):
     MEAN = 299.17117
     STD = 146.06215
@@ -8,9 +11,6 @@ def preprocessing(config, batch_features):
     if config['normalize']:
         if config['localnorm']:
             MEAN = torch.mean(batch_features).detach()
-            # print('FEATURE', batch_features.shape)
-            # print('FEATURE type', batch_features.dtype)
-            # print('STD', torch.std(batch_features))
             STD = torch.std(batch_features).detach()
         if config['normalize'] == 'standardize':
             batch_features -= MEAN
@@ -28,9 +28,6 @@ def preprocessing(config, batch_features):
     return batch_features, {'MEAN':MEAN, 'STD':STD, 'mi1':mi1, 'ma1':ma1}
 
 def postprocessing(config, predictions, extra):
-    # print('POST PROCESSING:', predictions.shape)
-    # print('MAXIMUM', predictions.max().detach())
-    # print('MINIMUM', predictions.min().detach())
     MEAN = extra['MEAN']
     STD = extra['STD']
     mi1 = extra['mi1']

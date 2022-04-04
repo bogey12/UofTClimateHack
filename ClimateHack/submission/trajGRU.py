@@ -1,11 +1,11 @@
 import torch
 from torch import nn
 import sys
-#sys.path.insert(1, 'C:\\Users\\HECAI\\Documents\\Personal\\ClimateAI\\grid_climate\\models2')
 sys.path.insert(1, './submission')
 from config import cfg
-#from model import activation
 import torch.nn.functional as F
+
+# TrajGRU model definition and helper functions
 
 # input: B, C, H, W
 # flow: [B, 2, H, W]

@@ -1,11 +1,3 @@
-"""cbam.py"""
-
-"""
-Ref: https://github.com/luuuyi/CBAM.PyTorch/blob/master/model/resnet_cbam.py
-Author: Yimin Yang
-Last revision date: Jan 18, 2022
-Function: Add CBAM to raw TransUNet
-"""
 import torch
 import torch.nn as nn
 import numpy as np
@@ -70,6 +62,7 @@ class TimeDistributed(nn.Module):
     def __repr__(self):
         return f"TimeDistributed({self.module})"
 
+# Channel attention for CBAM module
 class ChannelAttention(nn.Module):
     def __init__(self, input_channels, reduction_ratio=12):
         super(ChannelAttention, self).__init__()
@@ -92,7 +85,7 @@ class ChannelAttention(nn.Module):
         scale = x * torch.sigmoid(out).unsqueeze(2).unsqueeze(3).expand_as(x)
         return scale
 
-
+# Spatial attention for CBAM module
 class SpatialAttention(nn.Module):
     def __init__(self, kernel_size=7):
         super(SpatialAttention, self).__init__()
@@ -110,7 +103,8 @@ class SpatialAttention(nn.Module):
         scale = x * torch.sigmoid(out)
         return scale
 
-
+# Convolution Block Attention Module
+# https://github.com/Jongchan/attention-module/blob/c06383c514ab0032d044cc6fcd8c8207ea222ea7/MODELS/cbam.py#L84
 class CBAM(nn.Module):
     def __init__(self, input_channels, reduction_ratio=12, kernel_size=7):
         super(CBAM, self).__init__()
@@ -122,6 +116,7 @@ class CBAM(nn.Module):
         out = self.spatial_att(out)
         return out
 
+# Depthwise Seperable Convolution Defintion
 class DepthwiseSeparableConv(nn.Module):
     def __init__(self, in_channels, output_channels, k_size, pad, kernels_per_layer=1):
         super(DepthwiseSeparableConv, self).__init__()
@@ -133,6 +128,7 @@ class DepthwiseSeparableConv(nn.Module):
         x = self.pointwise(x)
         return x
 
+# Residual convolutional block with Depth Seperable convolutions and CBAM modules for UNet-based architectures
 class conv_CBAM(nn.Module):
     def __init__(self, in_c, out_c):
         super().__init__()
@@ -170,6 +166,7 @@ class conv_CBAM(nn.Module):
         x = self.dropout(self.bnout(x))
         return x
 
+# Baseline residual convolutional block for UNet-based architectures
 class conv_block(nn.Module):
     def __init__(self, in_c, out_c):
         super().__init__()
@@ -205,19 +202,7 @@ class conv_block(nn.Module):
         x = self.dropout(self.bnout(x))
         return x
 
-class bottle_block(nn.Module):
-    def __init__(self, in_c, out_c, kernel_size):
-        super().__init__()
-        self.bottle = nn.Conv3d(in_c, out_c, kernel_size=kernel_size, padding=0)
-        self.relu = nn.ReLU()
-        self.bn = nn.BatchNorm3d(24)
-        self.dropout = nn.Dropout3d(p=0.2)
-    def forward(self, inputs):
-        x = self.relu(self.bottle(inputs))
-        x = self.dropout(self.bn(x))
-        return x
-
-
+# Convolutional Encoder block for UNet models
 class encoder_block(nn.Module):
     def __init__(self, in_c, out_c, p_size, img_dim, conv_type=None):
         super().__init__()
@@ -226,22 +211,24 @@ class encoder_block(nn.Module):
         else:
             self.conv = conv_block(in_c, out_c)
         self.pool = nn.MaxPool2d(p_size)
-        #self.pool = nn.Conv2d(out_c, out_c, kernel_size=(2,2), stride=(2,2), padding=0)
     def forward(self, inputs):
         x = self.conv(inputs)
         p = self.pool(x)
-        #p = self.vit(p)
         return x, p
 
+# Convolutional Decoder block for UNet models
 class decoder_block(nn.Module):
     def __init__(self, in_c, out_c, p_size, img_dim, is_up=True, conv_type=None):
         super().__init__()
+        # is_up == False -> Use resize convolutions instead of transposed conovlutions
         self.is_up = is_up
         if is_up:
             self.up = nn.ConvTranspose2d(in_c, out_c, kernel_size=p_size, stride=p_size, padding=0)
         else:
             self.bich = nn.Conv2d(in_c, out_c, kernel_size=3, padding=1, padding_mode='reflect')
             self.biup = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+
+        ### Commented code for skip connection cross attention 
         #self.cross_attend = MultiHeadCrossAttention(in_c, out_c)
         #self.gn = nn.GroupNorm(num_groups=12, num_channels=out_c, eps=1e-6)
         #self.relu = nn.ReLU()
@@ -256,13 +243,10 @@ class decoder_block(nn.Module):
         else:
             x = self.bich(self.biup(inputs))
         x = torch.cat([x, skip], axis=1)
-        #x = self.vit(x)
         x = self.conv(x)
         return x
 
-
-
-
+# Time Distributed convolution residual block for ConvGRU encoder decoder model
 class convres(nn.Module):
     def __init__(self, in_c, out_c, time_steps):
         super().__init__()
@@ -285,6 +269,7 @@ class convres(nn.Module):
         x = self.dropout(self.bn2(x))
         return x
 
+# ConvGRU Encoder block
 class ConvGRU_block(nn.Module):
     def __init__(self, in_c, out_c, time_steps):
         super().__init__()
@@ -300,6 +285,7 @@ class ConvGRU_block(nn.Module):
         layer_output, last_state_list = self.ConvGRU(x, hid_init)
         return layer_output, last_state_list
 
+# ConvGRU Decoder block
 class ConvGRU_decode(nn.Module):
     def __init__(self, in_c, out_c, time_steps):
         super().__init__()
@@ -315,6 +301,7 @@ class ConvGRU_decode(nn.Module):
         x = self.up(x)
         return x
 
+# layer making function for TrajGRU model
 def make_layers(block):
     layers = []
     for layer_name, v in block.items():
