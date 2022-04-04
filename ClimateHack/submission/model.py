@@ -1,11 +1,89 @@
 import torch.nn as nn
 import torch
-from submission.utils import *
-from submission.ViT import ViT, ViT_Skip, ViT_encode, ViT_decode, ViT_Temp
+import sys
+sys.path.insert(1, './submission')
+from utils import *
+from ViT import ViT, ViT_Skip, ViT_encode, ViT_decode, ViT_Temp
 from einops import rearrange
-#from utils import *
-#from metnet import MetNet
+from Focal_Transformer.classification.focal_transformer_v2 import FocalTransformer, FocalTransformerSys
 
+# Focal Transformer: https://github.com/microsoft/Focal-Transformer
+# Uses focal transformer as both encoder and decoder in UNET like fashion. Inspired by Swin-UNet
+class Focal_FullUNet(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.model = FocalTransformerSys(img_size=128, patch_size=2, in_chans=12, embed_dim=48, depths=[2,2,6,2,1], drop_path_rate=0.2, 
+            focal_stages=[0, 1, 2, 3, 4], focal_levels=[2,2,2,2,2], expand_sizes=[3,3,3,3,3], expand_layer="all", 
+            num_heads=[3,6,12,24,24],
+            focal_windows=[7,5,3,1,1], 
+            window_size=8,
+            use_conv_embed=True, 
+            use_shift=False, 
+        )
+        """ Classifier """
+        self.outputs = nn.Conv2d(48, 24, kernel_size=1, padding=0)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, inputs):
+        """ Encoder """
+        x = self.model(inputs)
+        x = rearrange(x, 'b (x y) c -> b c x y', x=64, y=64)
+        """ Classifier """
+        outputs = self.outputs(x)
+        outputs = self.sigmoid(outputs)
+        return outputs
+
+# Uses focal transformer as encoder and UNET convolutional decoder with convolutional bottleneck.
+class Focal_UNet(nn.Module):
+    def __init__(self):
+        super().__init__()
+        embed = 48
+        conv_type = "CBAM"
+        self.encoder = FocalTransformer(img_size=128, patch_size=2, in_chans=12, embed_dim=embed, depths=[2,2,6,2], drop_path_rate=0.2, 
+            focal_levels=[2,2,2,2], expand_sizes=[3,3,3,3], expand_layer="all", 
+            num_heads=[3,6,12,24],
+            focal_windows=[7,5,3,1], 
+            window_size=8,
+            use_conv_embed=True, 
+            use_shift=False, 
+        )
+        self.resid = conv_CBAM(12,embed)
+
+        self.pool = nn.MaxPool2d((2,2))
+        self.bottle = conv_CBAM(8*embed, 16*embed)
+        self.bich = nn.Conv2d(8*embed, 8*embed, kernel_size=3, padding=1, padding_mode='reflect')
+        self.biup = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+
+        self.d1 = decoder_block(16*embed, 8*embed, (2,2), 16, False, conv_type)
+        self.d2 = decoder_block(8*embed, 4*embed, (2,2), 32, False, conv_type)
+        self.d3 = decoder_block(4*embed, 2*embed, (2,2), 64, False, conv_type)
+        self.d4 = decoder_block(2*embed, embed, (2,2), 128, False, conv_type)
+
+        """ Classifier """
+        self.outputs = nn.Conv2d(embed, 24, kernel_size=1, padding=0)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, inputs):
+        """ Encoder """
+        x, skips = self.encoder(inputs)
+
+        """ Bottleneck """
+        p = self.pool(x)
+        p = self.bottle(p)
+
+        """ Decoder """
+        d1 = self.d1(p, x)
+        d2 = self.d2(d1, skips[2])
+        d3 = self.d3(d2, skips[1])
+        d4 = self.d4(d3, skips[0])
+ 
+        """ Classifier """
+        outputs = self.outputs(d4)
+        outputs = self.sigmoid(outputs)
+        return outputs
+
+# Implementation of ConvGRU encoder decoder from: https://github.com/jleinonen/weather4cast-bigdata
+# final hidden states from ConvGRUs are used as initial hidden states for decoder ConvGRU's (similar to Unet skip connection)
 class UNET_ConvGRU(nn.Module):
     def __init__(self,in_time_steps,out_time_steps):
         super().__init__()
@@ -19,7 +97,6 @@ class UNET_ConvGRU(nn.Module):
         self.e5 = ConvGRU_block(8*init_channels, 16*init_channels, in_time_steps)
         self.pool = TimeDistributed(nn.MaxPool2d((2,2)))
         '''Bottleneck'''
-        #self.bottle = bottle_block(12, 24, kernel_size=1)
         self.skip1 = nn.Conv3d(in_time_steps, out_time_steps, kernel_size=1, padding=0)
         self.skip2 = nn.Conv3d(in_time_steps, out_time_steps, kernel_size=1, padding=0)
         self.skip3 = nn.Conv3d(in_time_steps, out_time_steps, kernel_size=1, padding=0)
@@ -56,6 +133,8 @@ class UNET_ConvGRU(nn.Module):
         dout = self.sigmoid(dout)
         return dout
 
+#### FINAL SUBMISSION ARCHITECTURE FOR University of Toronto. Test MS_SSIM Score: 0.83602  ####
+# 5-level UNet augmented with Vision Transformer in bottleneck
 class UNETViT(nn.Module):
     def __init__(self,in_channels,out_channels):
         super().__init__()
@@ -68,19 +147,11 @@ class UNETViT(nn.Module):
         self.e3 = encoder_block(2*init_channels, 4*init_channels, (2,2), 16, conv_type)
         self.e4 = encoder_block(4*init_channels, 8*init_channels, (2,2), 8, conv_type)
         self.e5 = encoder_block(8*init_channels, 16*init_channels, (2,2), 4, conv_type)
-        # self.e6 = encoder_block(512, 1024)
-        """ Bottleneck """
-        #self.vit_temp = ViT_Temp(img_dim=img_dim,
-        #               in_channels=2*out_c,  # input features' channels (encoder)
-        #               # transformer inside dimension that input features will be projected
-        #               # out will be [batch, dim_out_vit_tokens, dim ]
-        #               dim=768,
-        #               blocks=1,
-        #               heads=1,
-        #               dim_linear_block=3072,
-        #               classification=False)
+
+        """ Vision Transformer Bottleneck """
         self.vit = ViT(img_dim=4,
                        in_channels=16*init_channels,  # input features' channels (encoder)
+                       out_channels=32*init_channels,
                        patch_dim=1,
                        # transformer inside dimension that input features will be projected
                        # out will be [batch, dim_out_vit_tokens, dim ]
@@ -95,19 +166,14 @@ class UNETViT(nn.Module):
         # upsampling path
         self.b = conv_block(16*init_channels, 32*init_channels)
 
-        #self.skip1 = ViT_Skip(128, init_channels)
-        #self.skip2 = ViT_Skip(64, 2*init_channels)
-        #self.skip3 = ViT_Skip(32, 4*init_channels)
-        #self.skip4 = ViT_Skip(16, 8*init_channels)
-        #self.skip5 = ViT_Skip(8, 16*init_channels)
-
         """ Decoder """
-        self.d0 = decoder_block(32*init_channels, 16*init_channels, (2,2), 8, conv_type)
+        self.d0 = decoder_block(32*init_channels, 16*init_channels, (2,2), 8, True, conv_type)
         # self.d0b = decoder_block(1024, 512)
-        self.d1 = decoder_block(16*init_channels, 8*init_channels, (2,2), 16, conv_type)
-        self.d2 = decoder_block(8*init_channels, 4*init_channels, (2,2), 32, conv_type)
-        self.d3 = decoder_block(4*init_channels, 2*init_channels, (2,2), 64, conv_type)
-        self.d4 = decoder_block(2*init_channels, init_channels, (2,2), 128, conv_type)
+        self.d1 = decoder_block(16*init_channels, 8*init_channels, (2,2), 16, True, conv_type)
+        self.d2 = decoder_block(8*init_channels, 4*init_channels, (2,2), 32, True, conv_type)
+        self.d3 = decoder_block(4*init_channels, 2*init_channels, (2,2), 64, True, conv_type)
+        self.d4 = decoder_block(2*init_channels, init_channels, (2,2), 128, True, conv_type)
+
         """ Classifier """
         self.outputs = nn.Conv2d(init_channels, out_channels, kernel_size=1, padding=0)
         self.sigmoid = nn.Sigmoid()
@@ -118,9 +184,8 @@ class UNETViT(nn.Module):
         s3, p3 = self.e3(p2)
         s4, p4 = self.e4(p3)
         s5, p5 = self.e5(p4)
-        #s6, p6 = self.e6(p5)
+
         """ Bottleneck """
-        #b = self.vit_temp(p5)
         b = self.vit(p5)  # out shape of number_of_patches, vit_transformer_dim
 
         # from [number_of_patches, vit_transformer_dim] -> [number_of_patches, token_dim]
@@ -131,19 +196,20 @@ class UNETViT(nn.Module):
                       x=4, y=4,
                       patch_x=1, patch_y=1)
         b = self.b(b)
+
         """ Decoder """
         d0 = self.d0(b, s5)
-        #d0b = self.d0b(d0,s5)
         d1 = self.d1(d0, s4)
         d2 = self.d2(d1, s3)
         d3 = self.d3(d2, s2)
         d4 = self.d4(d3, s1)
+
         """ Classifier """
         outputs = self.outputs(d4)
         outputs = self.sigmoid(outputs)
         return outputs
 
-# U-NET BLOCKS AND MODEL
+# Use vision transformer for each level of UNet encoder and decoder. This was created before we learned about multi-resolution vision transformers.
 class ViT_Net(nn.Module):
     def __init__(self,in_channels,out_channels):
         super().__init__()
@@ -188,7 +254,7 @@ class ViT_Net(nn.Module):
         outputs = self.sigmoid(outputs)
         return outputs
 
-# U-NET BLOCKS AND MODEL
+# Normal Convolutional UNet
 class UNET(nn.Module):
     def __init__(self,in_channels,out_channels):
         super().__init__()
@@ -237,252 +303,12 @@ class UNET(nn.Module):
         outputs = self.sigmoid(outputs)
         return outputs
 
-class UNET64(nn.Module):
-    def __init__(self,UNET):
-        super().__init__()
-        self.UNET = UNET
-        self.bn = nn.BatchNorm2d(24)
-        self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(p=0.2)
-        self.out64 = encoder_block(24,24)
-        self.sigmoid = nn.Sigmoid()
-
-    def forward(self,inputs):
-        x = self.UNET(inputs)
-        x = self.bn(x)
-        x = self.relu(x)
-        x = self.dropout(x)
-        _,x = self.out64(x)
-        outputs = self.sigmoid(x)
-        return outputs
-
-class ConvLSTMCell(nn.Module):
-    def __init__(self, input_dim, hidden_dim, kernel_size, bias):
-        """
-        Initialize ConvLSTM cell.
-        Parameters
-        ----------
-        input_dim: int
-            Number of channels of input tensor.
-        hidden_dim: int
-            Number of channels of hidden state.
-        kernel_size: (int, int)
-            Size of the convolutional kernel.
-        bias: bool
-            Whether or not to add the bias.
-        """
-
-        super(ConvLSTMCell, self).__init__()
-
-        self.input_dim = input_dim
-        self.hidden_dim = hidden_dim
-
-        self.kernel_size = kernel_size
-        self.padding = kernel_size[0] // 2, kernel_size[1] // 2
-        self.bias = bias
-
-        self.conv = nn.Conv2d(in_channels=self.input_dim + self.hidden_dim,
-                              out_channels=4 * self.hidden_dim,
-                              kernel_size=self.kernel_size,
-                              padding=self.padding,
-                              bias=self.bias)
-
-    def forward(self, input_tensor, cur_state):
-        h_cur, c_cur = cur_state
-
-        combined = torch.cat([input_tensor, h_cur], dim=1)  # concatenate along channel axis
-
-        combined_conv = self.conv(combined)
-        cc_i, cc_f, cc_o, cc_g = torch.split(combined_conv, self.hidden_dim, dim=1)
-        i = torch.sigmoid(cc_i)
-        f = torch.sigmoid(cc_f)
-        o = torch.sigmoid(cc_o)
-        g = torch.tanh(cc_g)
-
-        c_next = f * c_cur + i * g
-        h_next = o * torch.tanh(c_next)
-
-        return h_next, c_next
-
-    def init_hidden(self, batch_size, image_size):
-        height, width = image_size
-        return (torch.zeros(batch_size, self.hidden_dim, height, width, device=self.conv.weight.device),
-                torch.zeros(batch_size, self.hidden_dim, height, width, device=self.conv.weight.device))
-
-
-class ConvLSTMs(nn.Module):
-
-    """
-    Parameters:
-        input_dim: Number of channels in input
-        hidden_dim: Number of hidden channels
-        kernel_size: Size of kernel in convolutions
-        num_layers: Number of LSTM layers stacked on each other
-        batch_first: Whether or not dimension 0 is the batch or not
-        bias: Bias or no bias in Convolution
-        return_all_layers: Return the list of computations for all layers
-        Note: Will do same padding.
-    Input:
-        A tensor of size B, T, C, H, W or T, B, C, H, W
-    Output:
-        A tuple of two lists of length num_layers (or length 1 if return_all_layers is False).
-            0 - layer_output_list is the list of lists of length T of each output
-            1 - last_state_list is the list of last states
-                    each element of the list is a tuple (h, c) for hidden state and memory
-    Example:
-        >> x = torch.rand((32, 10, 64, 128, 128))
-        >> convlstm = ConvLSTM(64, 16, 3, 1, True, True, False)
-        >> _, last_states = convlstm(x)
-        >> h = last_states[0][0]  # 0 for layer index, 0 for h index
-    """
-
-    def __init__(self, input_dim, hidden_dim, kernel_size, num_layers,
-                 batch_first=False, bias=True, return_all_layers=False):
-        super(ConvLSTMs, self).__init__()
-
-        self._check_kernel_size_consistency(kernel_size)
-
-        # Make sure that both `kernel_size` and `hidden_dim` are lists having len == num_layers
-        kernel_size = self._extend_for_multilayer(kernel_size, num_layers)
-        hidden_dim = self._extend_for_multilayer(hidden_dim, num_layers)
-        if not len(kernel_size) == len(hidden_dim) == num_layers:
-            raise ValueError('Inconsistent list length.')
-
-        self.input_dim = input_dim
-        self.hidden_dim = hidden_dim
-        self.kernel_size = kernel_size
-        self.num_layers = num_layers
-        self.batch_first = batch_first
-        self.bias = bias
-        self.return_all_layers = return_all_layers
-
-        cell_list = []
-        for i in range(0, self.num_layers):
-            cur_input_dim = self.input_dim if i == 0 else self.hidden_dim[i - 1]
-
-            cell_list.append(ConvLSTMCell(input_dim=cur_input_dim,
-                                          hidden_dim=self.hidden_dim[i],
-                                          kernel_size=self.kernel_size[i],
-                                          bias=self.bias))
-
-        self.cell_list = nn.ModuleList(cell_list)
-
-    def forward(self, input_tensor, hidden_states=None):
-        """
-        Parameters
-        ----------
-        input_tensor: todo
-            5-D Tensor either of shape (t, b, c, h, w) or (b, t, c, h, w)
-        hidden_state: todo
-            None. todo implement stateful
-        Returns
-        -------
-        last_state_list, layer_output
-        """
-        if not self.batch_first:
-            # (t, b, c, h, w) -> (b, t, c, h, w)
-            input_tensor = input_tensor.permute(1, 0, 2, 3, 4)
-
-        b, _, _, h, w = input_tensor.size()
-
-        # Implement stateful ConvLSTM
-        if hidden_state is not None:
-            pass # Hidden_state initialized as previous final hidden state
-        else:
-            # Since the init is done in forward. Can send image size here
-            hidden_state = self._init_hidden(batch_size=b,
-                                             image_size=(h, w))
-
-        layer_output_list = []
-        last_state_list = []
-
-        seq_len = input_tensor.size(1)
-        cur_layer_input = input_tensor
-
-        for layer_idx in range(self.num_layers):
-
-            h, c = hidden_state[layer_idx]
-            output_inner = []
-            for t in range(seq_len):
-                h, c = self.cell_list[layer_idx](input_tensor=cur_layer_input[:, t, :, :, :],
-                                                 cur_state=[h, c])
-                output_inner.append(h)
-
-            layer_output = torch.stack(output_inner, dim=1)
-            cur_layer_input = layer_output
-
-            layer_output_list.append(layer_output)
-            last_state_list.append([h, c])
-
-        if not self.return_all_layers:
-            layer_output_list = layer_output_list[-1:]
-            last_state_list = last_state_list[-1:]
-
-        return layer_output_list, last_state_list
-
-    def _init_hidden(self, batch_size, image_size):
-        init_states = []
-        for i in range(self.num_layers):
-            init_states.append(self.cell_list[i].init_hidden(batch_size, image_size))
-        return init_states
-
-    @staticmethod
-    def _check_kernel_size_consistency(kernel_size):
-        if not (isinstance(kernel_size, tuple) or
-                (isinstance(kernel_size, list) and all([isinstance(elem, tuple) for elem in kernel_size]))):
-            raise ValueError('`kernel_size` must be tuple or list of tuples')
-
-    @staticmethod
-    def _extend_for_multilayer(param, num_layers):
-        if not isinstance(param, list):
-            param = [param] * num_layers
-        return param
-
-class ConvLSTMModel(nn.Module):
-    def __init__(self, time_steps, channels, hidden_dim, out_steps):
-        super().__init__()
-        self.clstm1 = ConvLSTMs(input_dim=channels, hidden_dim=hidden_dim, kernel_size=(5,5), num_layers=1, batch_first=True)
-        self.bn1 = nn.BatchNorm3d(time_steps)
-        self.clstm2 = ConvLSTMs(input_dim=hidden_dim, hidden_dim=hidden_dim, kernel_size=(3,3), num_layers=1, batch_first=True)
-        self.bn2 = nn.BatchNorm3d(time_steps)
-        self.clstm3 = ConvLSTMs(input_dim=hidden_dim, hidden_dim=hidden_dim, kernel_size=(1,1), num_layers=1, batch_first=True)
-        self.maxpool2d = nn.MaxPool3d((1, 2, 2), stride=(1, 2, 2))
-        self.conv3d = nn.Conv3d(hidden_dim, out_steps, (3,3,3), padding='same')
-        #self.conv3dch = nn.Conv3d(time_steps, 1, (3,3,3), padding='same')
-
-
-
-    def forward(self, x):
-        outputs, _ = self.clstm1(x)
-        outputs = torch.relu(outputs[0])
-        outputs = self.bn1(outputs)
-        outputs, _ = self.clstm2(outputs)
-        outputs = torch.relu(outputs[0])
-        outputs = self.bn2(outputs)
-        outputs, _ = self.clstm3(outputs)
-        outputs = torch.relu(outputs[0])
-        # Reduce channels to 1
-        #outputs = self.conv3dch(outputs)
-        #outputs = torch.relu(outputs)
-        # Permute outputs from (b,t,c,h,w) -> (b,c,t,h,w)
-        outputs = outputs.permute(0, 2, 1, 3, 4)
-        outputs = self.maxpool2d(outputs)
-        # get last outputs sequence form outputs:
-        outputs = self.conv3d(outputs)
-        outputs = torch.sigmoid(outputs)
-        # Permute back  (b,c,t,h,w) -> (b,t,c,h,w)
-        outputs = outputs.permute(0, 2, 1, 3, 4)
-        return outputs
-
 if __name__ == "__main__":
     x = torch.rand((8,12,1,128,128))
     #y = torch.rand((8,1,24,64,64))
     model = UNET_ConvGRU(12,24)
     y = model(x)
     print(y.shape)
-
-
-
     #MSSIM_criterion = MS_SSIM(data_range=1.0, size_average=True, win_size=3, channel=24)
     #model = ConvLSTMModel(time_steps=1,channels=12,hidden_dim=64,out_steps=24)
     #outs = model(x)

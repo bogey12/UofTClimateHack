@@ -1,10 +1,20 @@
 import numpy as np
 import torch.nn as nn
+import torch
 import matplotlib.pyplot as plt
+import lpips
 from pytorch_msssim import MS_SSIM
 from torch import from_numpy
 #from dataset2 import ClimateHackDataset
 from evaluate import Evaluator
+from einops import repeat, rearrange
+
+def normalize(t):
+    t -= torch.min(t).detach()
+    t /= (torch.max(t).detach() - torch.min(t).detach())
+    t *= 2
+    t -= 1
+    return t
 
 def visualize(x,y_true,y_pred):
 
@@ -53,27 +63,35 @@ def main():
     #print(features.shape)
 
 
-    criterion = MS_SSIM(data_range=1023.0, size_average=True, win_size=3, channel=1)
+    #criterion = MS_SSIM(data_range=1023.0, size_average=False, win_size=3, channel=1)
+    criterion = lpips.LPIPS(net='alex')
     #criterion = nn.MSELoss()
     evaluator = Evaluator()
-    pred = evaluator.predict(features["osgb"][0], features["data"][0])
-    visualize(features["data"][0], targets["data"][0], pred)
+    #pred = evaluator.predict(features["osgb"][0], features["data"][0])
+    #visualize(features["data"][0], targets["data"][0], pred)
 
     scores = [
         criterion(
-            from_numpy(evaluator.predict(*datum)).view(24,64,64).unsqueeze(dim=1),
-            from_numpy(target).view(24,64,64).unsqueeze(dim=1),
-        )
+            normalize(from_numpy(evaluator.predict(*datum)).view(24,64,64).unsqueeze(dim=1).repeat(1,3,1,1)),
+            normalize(from_numpy(target).view(24,64,64).unsqueeze(dim=1).repeat(1,3,1,1)),
+        ).unsqueeze(0)
         for *datum, target in zip(features["osgb"], features["data"], targets["data"])
         #for *datum, target in zip(dataset.coordinates,dataset.features,dataset.labels)
     ]
 
+    scores = torch.cat(scores, dim=0)
+    #print(scores.shape)
+    print(torch.mean(scores,dim=0).squeeze().detach().numpy())
+    print(torch.std(scores,dim=0).squeeze().detach().numpy())
+    #print(scores.shape)
+    #print(scores[0].shape)
     #print(scores)
+    #ax.set_title('Line plot with error bars')
+    #plt.save("test.png")
 
-
-
-
-    print(f"Score: {np.mean(scores)} ({np.std(scores)})")
+    plt.show()
+    np.savez("Persistence_Lpips",mean=1-torch.mean(scores,dim=0).detach().numpy(), std=1-torch.std(scores,dim=0).detach().numpy())
+    #print(f"Score: {np.mean(scores)} ({np.std(scores)})")
 
 
 if __name__ == "__main__":
