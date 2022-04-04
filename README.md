@@ -1,6 +1,6 @@
 # UofTClimateHack
 
-This repository outlines the solutions and code behind the University of Toronto Team's Submission for [ClimateHackAI](https://climatehack.ai/).
+This repository outlines the solutions and code behind the University of Toronto Team's Submission for 2022 [ClimateHack](https://climatehack.ai/).
 
 # Background
 Currently, UK energy grids use a combination of both solar and natural gas sources to generate power. Due to a lack of accurate solar forecasting, natural gas turbines are on all the time, with solar power stored as excess in reserves. If they had more accurate solar forecasting algorithms, they could turn on/off natural gas sources when solar production is adequate. 
