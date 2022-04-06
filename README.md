@@ -15,11 +15,8 @@ Find a summary of our main approach and other attempted solutions here: (INSERT 
 
 Our main approach uses a 5-level U-Net augmented with a standard vision transformer in the bottleneck to better model global relationships (see UNETViT in submission/model.py). This approach got us 2nd in the leaderboard with a MS_SSIM Score of 0.836. Other improvements from our main approach over a standard U-Net include the use of group normalization instead of batch normalization and depth-wise separable convolutions to reduce model size by 3x without noticably dropping performance.
 
-Sample predictions from our model:
-![](https://github.com/bogey12/UofTClimateHack/blob/TonyDev/anim_UNet_VIT/0.gif)
+**Sample predictions from our model:**
 ![](https://github.com/bogey12/UofTClimateHack/blob/TonyDev/anim_UNet_VIT/2.gif)
-![](https://github.com/bogey12/UofTClimateHack/blob/TonyDev/anim_UNet_VIT/4.gif)
-![](https://github.com/bogey12/UofTClimateHack/blob/TonyDev/anim_UNet_VIT/6.gif)
 (EXPLAIN A LITTLE BIT ABOUT THE PREDICTIONS + FTT stuff)
 
 # Other Solutions and Ideas
@@ -27,10 +24,10 @@ Sample predictions from our model:
 
 **Convolution Based Attention Module (CBAM):** First, max and average pooling to aggregate spatial information and then attention is computed across input channels to capture inter-channel dependencies. This module was included in some of our U-Net-based experiments in our convolution blocks. These modules weren't included in our final model because they provided minimal benefit to performance.
 
-Code Reference: https://github.com/elbuco1/CBAM
+Code Reference: [CBAM](https://github.com/elbuco1/CBAM)
 
 **Focal Transformers:** Focal transformer is a multi-resolution vision transformer architecture suited for dealing with high-resolution images. This architecture attends at a fine-resolution locally and course resolution globally allowing focal transformers to capture high-resolution local information while maintaining scalability to larger input features. 
 
 We used focal transformers as both the encoder and decoder replacement in our UNET architectures similar to how a Swin-UNet is organized. Our experiments were promising, but we ran out of time to train our focal transformer experiments to convergence.
 
-Code Reference: https://github.com/microsoft/Focal-Transformer
+Code Reference: [Focal Transformer]https://github.com/microsoft/Focal-Transformer
