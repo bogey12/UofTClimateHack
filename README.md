@@ -3,15 +3,21 @@
 This repository outlines the solutions and code behind the University of Toronto Team's 2nd Place Submission for 2022 [ClimateHack](https://climatehack.ai/).
 
 # Background
-Currently, UK energy grids use a combination of both solar and natural gas sources to generate power. Due to a lack of accurate solar forecasting, natural gas turbines are on all the time, with solar power stored as excess in reserves. If they had more accurate solar forecasting algorithms, they could turn on/off natural gas sources when solar production is adequate. 
+Better near-term forecasting of solar electricity generation will enable electricity grid operators around the world to do a better job of scheduling their grids. 
 
-This would allow them to minimize the use of standby gas turbines, potentially leading to a substantial reduction in carbon emissions of up to 100 kilotonnes a year. While it is incredibly difficult to accurately predict the climate impact, a rough estimate suggests that better solar power forecasts if deployed worldwide could reduce global carbon emissions by about 100 million tonnes of CO2 a year by 2030.
+For example, currently the UK National Energy Grid Operator use a combination of solar and natural gas sources to generate power. The objective of the grid is to reliably supply electricity to meet demand at all times, and hence use natural gas on 24/7 standby in the event of sudden falls in solar production (e.g. due to dense cloud coverage). 
+
+By developing better solar forecasting techniques, the Grid Operator could minimize the use of standby gas turbines, potentially leading to a substantial reduction in carbon emissions of up to 100 kilotonnes a year. While it is incredibly difficult to accurately predict the climate impact, a rough estimate suggests that better solar power forecasts if deployed worldwide could reduce global carbon emissions by about 100 million tonnes of CO2 a year by 2030.
 
 # Challenge
-We had ~1.5 months as individuals, and 1 week as a team to apply cutting-edge machine learning techniques in order to develop the best satellite imagery prediction algorithm for use in solar photovolatic output forecasting. **The specific challenge:** from a series of 12 images covering a 128×128-pixel region cropped out of a series of much larger satellite images taken five minutes apart, accurately predict the next 24 images for the central 64×64-pixel area, corresponding to the next two hours of satellite imagery.
+We had ~1.5 months as individuals, and 1 week as a team to apply cutting-edge machine learning techniques in order to develop the best satellite imagery prediction algorithm for use in solar photovolatic output forecasting. 
+
+**The specific challenge:** from a series of 12 images covering a 128×128-pixel region cropped out of a series of much larger satellite images taken five minutes apart, accurately predict the next 24 images for the central 64×64-pixel area, corresponding to the next two hours of satellite imagery.
+
+[Open Climate Fix](https://www.openclimatefix.org/) provided us with ~2 years of high resolution satellite imagery over the UK and north-western Europe from EUMETSAT's [Spinning Enhanced Visible and InfraRed Imager Rapid Scanning Service](https://www.eumetsat.int/rapid-scanning-service) with a spatial resolution of about 2-3 km. 
 
 # Our Main Approach
-Find a summary of our main approach and other attempted solutions here: (INSERT SLIDES LINK HERE)
+Find a summary of our main approach and other attempted solutions here: [Presentation Slide Deck](https://drive.google.com/file/d/1FbSnPaqEpnLMwjqKs3ynlENwFnrbznGU/view?usp=sharing)
 
 Our main approach uses a 5-level U-Net augmented with a standard vision transformer in the bottleneck to better model global relationships (see UNETViT in submission/model.py). This approach got us 2nd in the leaderboard with a MS_SSIM Score of 0.836. Other improvements from our main approach over a standard U-Net include the use of group normalization instead of batch normalization and depth-wise separable convolutions to reduce model size by 3x without noticably dropping performance.
 
