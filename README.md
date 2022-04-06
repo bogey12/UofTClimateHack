@@ -30,4 +30,4 @@ Code Reference: [CBAM](https://github.com/elbuco1/CBAM)
 
 We used focal transformers as both the encoder and decoder replacement in our UNET architectures similar to how a Swin-UNet is organized. Our experiments were promising, but we ran out of time to train our focal transformer experiments to convergence.
 
-Code Reference: [Focal Transformer]https://github.com/microsoft/Focal-Transformer
+Code Reference: [Focal Transformer](https://github.com/microsoft/Focal-Transformer)
