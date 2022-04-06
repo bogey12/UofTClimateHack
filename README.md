@@ -23,10 +23,16 @@ Our main approach uses a 5-level U-Net augmented with a standard vision transfor
 
 **Sample predictions from our model:**
 ![](https://github.com/bogey12/UofTClimateHack/blob/TonyDev/anim_UNet_VIT/2.gif)
-(EXPLAIN A LITTLE BIT ABOUT THE PREDICTIONS + FTT stuff)
+Shown above is a GIF of the model's predictions compared with the ground truth. The top row compares the raw image sequence, whereas the bottom row compares their Fast Fourier Transforms (FFTs). The last column shows the difference between the two images. 
+
+FFTs decompose signals into a linear combination of pure frequency components. This was applied to the predictions to help determine quantitatively which types of images the model was failing to predict. In the FFT diagram, low frequency features are shown in the center, with the frequency of the features increasing as you move away from it.
+
+This analysis shows that the model predicts low frequency features well but fails to predict mid to high frequency features, as shown by the fact that the model's FFT is significantly more concentrated in the center compared to the ground truth.
 
 # Other Solutions and Ideas
-**Trajectory GRU:** (ANDY FILL OUT TRAJ GRU SECTION HERE)
+**Trajectory GRU:** Trajectory GRU is a model architecture that improves on previous attempts at incorporating convolutions in autoregressive models (ConvLSTM, ConvGRU). These past attempts use fixed convolutions on the hidden states at each time step, which means that connections between the current hidden state and past hidden state are always the same. This is not desirable when predicting fast moving objects, as the past hidden state representations of these objects should ideally have their information propagated to a different location in the future hidden state representation. TrajGRU solves this problem by dynamically generating these connections.
+
+Code Reference: [TrajGRU](https://github.com/Hzzone/Precipitation-Nowcasting)
 
 **Convolution Based Attention Module (CBAM):** First, max and average pooling to aggregate spatial information and then attention is computed across input channels to capture inter-channel dependencies. This module was included in some of our U-Net-based experiments in our convolution blocks. These modules weren't included in our final model because they provided minimal benefit to performance.
 
